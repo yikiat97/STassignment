@@ -2,47 +2,77 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import axios from 'axios';
+  import { userStore } from '../../../lib/stores';
+  import Layout from '../../layout.svelte';
+  import { page } from '$app/stores';
   const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
 
-//   onMount(async () => {
-//     try {
-//       const response = await axios.get(ApiUrl + '/verifyJWT', {
-//         withCredentials: true,  
-//       });
+  let isAdmin = false;
 
-//       if (response.data == "verified") {
-//           // Redirect to login if token is invalid
-//           // checkgroup()
-//       }
-//       else {
-//         goto('/login');
-//       }
-//     } catch (error) {
-//       console.error('Token verification failed:', error);
-//       goto('/login');  
-//     }
-//   });
-onMount(async () => {
+  onMount(async () => {
     try {
         const response = await axios.get(ApiUrl + '/Application   ', {
         withCredentials: true  
         });
         if (response.data == "Forbidden: You do not have access to this resource"){
+           alert("test")
             goto('/login');
         }
-
-        // If successful, log the response
         console.log('Access granted:', response.data);
+        if (response.data.result.includes("admin") ){
+            isAdmin = true      
+        }
     } catch (error) {
         // Handle any errors, like unauthorized access
+       
         goto('/login');
         console.error('Access denied:', error.response.data.message);
     }
-});
+  });
+
+
+console.log($page.url.pathname)
+
 </script>
+<Layout>
+<span slot="NavContentLeft">Hello, {$userStore.username}</span>
+  <div slot="NavContentCenter">
+    {#if isAdmin}
+      <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application'}>Application</a>
+      <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
+    {/if}
+  </div>
+  <div slot="NavContentRight">Edit here</div>
+</Layout>
+
+
+<!-- <nav class="NavContainer">
+   <p>Welcome, {$userStore.username}!</p>
+</nav> -->
+
+
 
 
 <main>
     <h1>Welcome to the Application users</h1>
     <p>Manage Task here.</p>
 </main>
+
+
+<style>
+    a {
+  text-decoration: none; /* Remove the default underline */
+  color: white;
+  padding: 0 10px;
+}
+
+a:hover {
+  text-decoration: underline; /* Underline on hover */
+}
+
+a.active {
+  text-decoration: underline; /* Underline if this is the active page */
+  font-weight: bold; /* Optional: Make it bold */
+  /* color: yellow; */
+}
+</style>

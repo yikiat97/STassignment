@@ -26,6 +26,7 @@ const authenticateToken = (req, res, next) => {
 
     //const user = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded; // Attach user information to the request
+    
     next();
   } catch (error) {
     res.status(403).json({ message: "Invalid or expired token" });
@@ -45,17 +46,17 @@ const verifyTokenWithIPAndBrowser =  (requiredRoles) => async(req, res, next) =>
   try {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(decoded)
-    console.log(decoded.id)
-    console.log(req.ip)
-    console.log(req.headers['user-agent'])
-    console.log(requiredRoles)
+    // console.log(decoded)
+    // console.log(decoded.id)
+    // console.log(req.ip)
+    // console.log(req.headers['user-agent'])
+    // console.log(requiredRoles)
     // console.log(userChecked)
 
     const currentIp = req.ip || req.connection.remoteAddress;
     const currentBrowser = req.headers['user-agent'];  
     const userChecked = await userService.checkGroup(decoded.id,requiredRoles)
-    console.log(userChecked)
+    //console.log(userChecked)
 
     // Compare decoded token IP and browser with the current request
     if (decoded.ip == currentIp && decoded.browser == currentBrowser && userChecked) {

@@ -4,17 +4,24 @@ const { authenticateToken,verifyTokenWithIPAndBrowser } = require("../middleware
 
 const router = express.Router();
 
-router.get("/verifyJWT", authenticateToken, userController.getResult);
+// router.get("/verifyJWT", authenticateToken, userController.getResult);
 router.get("/users", authenticateToken, userController.getAllUsers );
+router.get("/allGroup", authenticateToken, userController.getAllGroup);
+router.post(
+  "/addNewGroup",
+  verifyTokenWithIPAndBrowser("admin"),
+  userController.insertNewGroup
+);
+router.put("/updateUser", verifyTokenWithIPAndBrowser('admin'), userController.updateUserController);
 router.post('/login', userController.login);
-router.post('/register', userController.register)
+router.post('/register', userController.register);
+router.put("/updateUser", verifyTokenWithIPAndBrowser('admin'), userController.updateUserController);
 router.delete("/userDelete/:id", userController.deletion);
 
 
-// Protected Routes
-router.get('/Application', verifyTokenWithIPAndBrowser('users'), (req, res) => {
-    res.status(200).json({ message: "users" });
-  }, userController.getResult);
+// Protected Routes for frontend
+router.get('/Application', authenticateToken, userController.getResult);
+
 router.get('/UserManagement', verifyTokenWithIPAndBrowser('admin'), (req, res) => {
     res.status(200).json({ message: "admin" });
   }, userController.getResult);

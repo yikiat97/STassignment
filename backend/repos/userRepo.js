@@ -1,11 +1,14 @@
 const db = require('../config/database');
 
-const checkGroupWithUserId = async(userId, group) => {
+const checkGroupWithUserId = async (username, group) => {
   const [rows] = await db.query(`
     SELECT COUNT(*) as count
     FROM user_group ug
     JOIN accounts a ON a.username = ug.username
-    WHERE a.id = ? AND ug.usergroup = ?` ,[userId, group])
+    WHERE a.username = ? AND ug.usergroup = ?`,
+    [username, group]
+  );
+
   return rows[0].count > 0;
 };
 
@@ -33,8 +36,8 @@ const addUser = async user => {
     "INSERT INTO accounts (username, email, password) VALUES (?, ?, ?)",
     [username, email, password]
   );
-  // Return the new user with the generated ID
-  return { id: result.insertId, ...user };
+  
+  return result;
 };
 
 
@@ -44,10 +47,23 @@ const deleteUserById = async id => {
   return result.affectedRows;  
 };
 
+const getGroup = async username => {
+  const [rows] = await db.query(`
+    SELECT ug.usergroup 
+    FROM user_group ug
+    JOIN accounts a ON a.username = ug.username
+    WHERE a.username = ?`,
+    [username]
+  );
+
+  return rows.map(row => row.usergroup);
+};
+
   module.exports = {
     checkGroupWithUserId,
     getAllUsers,
     getUserByUsername,
     addUser,
-    deleteUserById
+    deleteUserById,
+    getGroup
   };

@@ -1,11 +1,12 @@
 <script>
     import {goto} from '$app/navigation'
     import axios from 'axios'
+    import { userStore } from '../../lib/stores';
 
  
     let username ='';
     let password ='';
-    let showError = true;
+    let showError = false;
     const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
 
 
@@ -25,13 +26,15 @@
           const { token, user } = response.data;
           console.log(response.data)
 
-          console.log('Token:', token);
-          console.log('User:', user);
+          // console.log('Token:', token);
+          // console.log('User:', user);
+          goto('/Home page/Application')
           if (user[0].usergroups.split(",").includes("admin") ){
-            goto('/Home page/User Management')
+            userStore.set({ username: user[0].username });   
+            //goto('/Home page/User Management')
           }
           else {
-            goto('/Home page/Application')
+            
           }
           
         } catch (error) {
