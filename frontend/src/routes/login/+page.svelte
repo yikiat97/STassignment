@@ -2,6 +2,11 @@
     import {goto} from '$app/navigation'
     import axios from 'axios'
     import { userStore } from '../../lib/stores';
+    import { handleError, handleNetworkError, handleUnauthorizedError, handleValidationError } from '../../lib/errorHandler';
+
+
+
+
 
  
     let username ='';
@@ -33,13 +38,12 @@
             userStore.set({ username: user[0].username });   
             //goto('/Home page/User Management')
           }
-          else {
-            
-          }
+ 
           
         } catch (error) {
           // @ts-ignore
           console.error('Login failed:', error.response.data.message);
+          handleError(error.response.data);
         }
     }
 

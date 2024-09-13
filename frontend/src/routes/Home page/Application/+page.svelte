@@ -5,28 +5,30 @@
   import { userStore } from '../../../lib/stores';
   import Layout from '../../layout.svelte';
   import { page } from '$app/stores';
+  import { handleError, handleNetworkError, handleUnauthorizedError, handleValidationError } from '../../../lib/errorHandler';
   const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
 
   let isAdmin = false;
+  let globalUsername;
 
   onMount(async () => {
     try {
         const response = await axios.get(ApiUrl + '/Application   ', {
         withCredentials: true  
         });
+        console.log(response)
         if (response.data == "Forbidden: You do not have access to this resource"){
-           alert("test")
             goto('/login');
         }
-        console.log('Access granted:', response.data);
+        globalUsername = response.data.username
+        // console.log('Access granted:', response.data);
         if (response.data.result.includes("admin") ){
             isAdmin = true      
         }
     } catch (error) {
-        // Handle any errors, like unauthorized access
-       
         goto('/login');
         console.error('Access denied:', error.response.data.message);
+        handleError(error.response.data);
     }
   });
 
@@ -34,15 +36,17 @@
 console.log($page.url.pathname)
 
 </script>
-<Layout>
-<span slot="NavContentLeft">Hello, {$userStore.username}</span>
+
+
+<Layout bind:globalUsername>
+<span slot="NavContentLeft">Hello, {globalUsername}</span>
   <div slot="NavContentCenter">
     {#if isAdmin}
       <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application'}>Application</a>
       <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
     {/if}
   </div>
-  <div slot="NavContentRight">Edit here</div>
+  <div slot="NavContentRight" >Edit here</div>
 </Layout>
 
 

@@ -5,15 +5,21 @@
   import { userStore } from '../../../lib/stores';
   import Layout from '../../layout.svelte';
   import { page } from '$app/stores';
+  import { handleError,customError, handleNetworkError, handleUnauthorizedError, handleValidationError, customAlert } from '../../../lib/errorHandler';
   const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
   import Modal from '../../../lib/AddGroupModel.svelte';
 
 	
-
+let isAdmin = false;
 let showModal = false;
+let ProfileModal = false;
 let AddedGroupName = '';
 let users = [];
 let distinctGroups = [];
+let globalUsername;
+
+let updatedEmail;
+let password
 
 const getAllUsers = async() => {
       try{
@@ -23,8 +29,9 @@ const getAllUsers = async() => {
         users = userlist.data
         // users = userlist.data
         console.log(userlist)
-    }catch (error) {
+    } catch (error) {
        console.error('Access denied:', error.response.data.message);
+       handleError(error.response.data);
     }
 }
 
@@ -37,6 +44,7 @@ const getAllGroups = async() => {
         console.log(grouplist)
     }catch (error) {
        console.error('Access denied:', error.response.data.message);
+       handleError(error.response.data);
     }
 }
 
@@ -45,18 +53,22 @@ onMount(async () => {
         const response = await axios.get(ApiUrl + '/UserManagement', {
         withCredentials: true  
         });
+        console.log(response)
         if (response.data == "Forbidden: You do not have access to this resource"){
             goto('/login');
         }
-
+        isAdmin = true
         console.log('Access granted:', response.data);
+        globalUsername = response.data.username
         getAllUsers()
         getAllGroups()
     } catch (error) {
         // Handle any errors, like unauthorized access
-        goto('/login');
+        
         // @ts-ignore
         console.error('Access denied:', error.response.data.message);
+        handleError(error.response.data);
+        goto('/login');
     }
 // @ts-ignore
 
@@ -81,7 +93,7 @@ let newUser = {
     email: null,
     group: [],
     password: null,
-    active: 'Yes',
+    active: 'Active',
     editMode: false
 };
 
@@ -118,6 +130,10 @@ function showAddGroupDropdown(index) {
 }
 
 function addGroup(index) {
+      if (users[index].selectedGroup === '') {
+      customAlert("Please select a valid group.")
+      return; // Don't allow the default option to proceed
+    }
   if (!users[index].usergroups.includes(users[index].selectedGroup)) {
    users[index].usergroups.push(users[index].selectedGroup);
   }
@@ -126,7 +142,6 @@ function addGroup(index) {
 
 // @ts-ignore
 function saveChanges(index) {
-  console.log(index)
   users[index].editMode = false;
   console.log('Saved before post:',users[index]);
 
@@ -135,11 +150,13 @@ function saveChanges(index) {
     }).then(response => {
     console.log("Status:", response);  // Logs the status, e.g., 200
     getAllUsers()
-
+    customAlert("Updated Profile")
 
   })
   .catch(error => {
     console.error("Error:", error);
+    getAllUsers()
+    handleError(error.response.data);
     /////////////////////////////////////////////////// rmb change Forbidden: You do not have access to this resource 
   });
 
@@ -158,7 +175,9 @@ function submitNewUser() {
 
       const password = newUser.password;
       if (password.length < 8 || password.length > 10) {
+         customError("Password must be between 8 and 10 characters long.");
         throw new Error("Password must be between 8 and 10 characters long.");
+        
       }
 
       const hasAlphabet = /[A-Za-z]/.test(password);
@@ -166,7 +185,9 @@ function submitNewUser() {
       const hasSpecialChar = /[@$!%*?&]/.test(password);
 
       if (!hasAlphabet || !hasNumber || !hasSpecialChar) {
+        customError("Password must contain at least one letter, one number, and one special character.");
         throw new Error("Password must contain at least one letter, one number, and one special character.");
+
       }
       
         // @ts-ignore
@@ -194,15 +215,19 @@ function submitNewUser() {
               };
 
               getAllUsers()
-
+              customAlert("New User Added")
         })
         .catch(error => {
           console.error("Error:", error);
+          handleError(error.response.data);
+         
         });
 
         
     } else {
-        alert('Please fill in all fields');
+        //alert('Please fill in all fields');
+        //const error.response.data.message = 'Please fill in all fields'
+        customError('Please fill in all fields');
     }
 }
 
@@ -212,12 +237,14 @@ function addNewGroup(){
           withCredentials: true  
           }).then(response => {
           console.log("Status:", response.status); 
-
-              getAllGroups()
+          getAllGroups()
+          customAlert("group added")
+          showModal = false
 
         })
         .catch(error => {
-          console.error("Error:", error);
+          console.error("Error:", error);  
+          handleError(error.response.data);
         });
 
 
@@ -227,12 +254,14 @@ function addNewGroup(){
 
 
 <Layout>
-<span slot="NavContentLeft">Hello, </span>
+<span slot="NavContentLeft">Hello, {globalUsername}</span>
   <div slot="NavContentCenter">
+    {#if isAdmin}
       <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application'}>Application</a>
       <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
+    {/if}
   </div>
-  <div slot="NavContentRight">Edit here</div>
+  <div slot="NavContentRight" >Edit here</div>
 </Layout>
 
 <div class="container">
@@ -276,7 +305,8 @@ function addNewGroup(){
                 {/each}
                 {#if NewUserShowDropdown}
                   <!-- Show dropdown to add group -->
-                  <select bind:value={NewUserSelectedGroup} on:change={() => addNewUserGroup()}>
+                  <select bind:value={NewUserSelectedGroup} on:click={() => addNewUserGroup()}>
+                    <option value="" disabled>Select a group</option>
                     {#each distinctGroups as distinctGroup}
                       <option value={distinctGroup}>{distinctGroup}</option>
                     {/each}
@@ -317,6 +347,7 @@ function addNewGroup(){
                 {#if user.showDropdown}
                   <!-- Show dropdown to add group -->
                   <select bind:value={user.selectedGroup} on:change={() => addGroup(index)}>
+                    <option value="" >Select a group</option>
                     {#each distinctGroups as distinctGroup}
                       <option value={distinctGroup}>{distinctGroup}</option>
                     {/each}
@@ -367,9 +398,9 @@ function addNewGroup(){
     <label for="groupName" style="margin-bottom: 10px;">Group Name:</label>
     <input type="text" id="groupName" bind:value={AddedGroupName} class="editable" />
 </div>
- <div class="input-container">
+ <div slot="button">
     <button class="modelCloseBtn" on:click={() => addNewGroup()}>ADD</button>
-    <button class="modelCloseBtn" on:click={() => showModal = false}>CANCEL</button> <!-- not fixeddddd -->
+    <!-- <button class="modelCloseBtn" on:click={() => showModal = false}>CANCEL</button> not fixeddddd -->
   </div>
     
 

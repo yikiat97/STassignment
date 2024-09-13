@@ -9,6 +9,23 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+const getUserByUsername = async (req, res) => {
+  try {
+    // Access the username parameter from the URL path
+    const username = req.query.username;
+
+    // Call the service function with the username
+    const user = await userService.getUserByUsername(username);
+    if (user) {
+      res.status(200).json(user);
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getAllGroup = async (req, res) => {
   try {
     const users = await userService.getAllGroupByDistinct();
@@ -22,7 +39,6 @@ const insertNewGroup = async (req, res) => {
   const {groupName} = req.body;
 
   try {
-    console.log(groupName);
     const users = await userService.insertNewGroupName(groupName);
  
     res.status(200).json({ message: "Group Updated"});
@@ -30,7 +46,7 @@ const insertNewGroup = async (req, res) => {
      
       res
         .status(500)
-        .json({ message: "An error occurred", error: error.message });
+        .json({ message: "An error occurred: " + error.message });
   
   }
 };
@@ -58,13 +74,13 @@ const login = async (req, res) => {
     res.status(200).json({ message: "Login successful", user, token });
   } catch (error) {
     if (error.message === "User not found") {
-      res.status(404).json({ message: error.message });
+      res.status(404).json({ message: "Invalid credentials" });
     } else if (error.message === "Invalid credentials") {
       res.status(401).json({ message: error.message });
     } else {
       res
         .status(500)
-        .json({ message: "An error occurred", error: error.message });
+        .json({ message: error.message });
     }
   }
 };
@@ -96,7 +112,7 @@ const register = async (req, res) => {
 
 const updateUserController = async (req, res) => {
   const { username, email, password, accountStatus, usergroups } = req.body;
-console.log(username);
+
   try {
     // Call the service to update the user
     const result = await userService.updateUser(
@@ -111,7 +127,7 @@ console.log(username);
     return res.status(200).json(result);
   } catch (error) {
     // Catch any errors thrown from the service and send error response
-    return res.status(400).json({ error: error.message });
+    return res.status(400).json({ message: error.message });
   }
 };
 
@@ -140,6 +156,7 @@ const getResult = async (req, res) => {
 
 module.exports = {
   getAllUsers,
+  getUserByUsername,
   getAllGroup,
   insertNewGroup,
   login,

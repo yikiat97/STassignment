@@ -16,11 +16,13 @@ CREATE TABLE IF NOT EXISTS `accounts` (
  `accountStatus` varchar(30) NOT NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 INSERT INTO `accounts` (`username`, `password`, `email`,`accountStatus`) 
-VALUES ('yikiat1', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'yikiat@hotmail.com', 'active');
+VALUES ('admin', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'admin@hotmail.com', 'Active');
 INSERT INTO `accounts` (`username`, `password`, `email`,`accountStatus`) 
-VALUES ('yikiat2', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'yikiat@hotmail.com', 'active');
+VALUES ('yikiat1', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'yikiat@hotmail.com', 'Active');
+INSERT INTO `accounts` (`username`, `password`, `email`,`accountStatus`) 
+VALUES ('yikiat2', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'yikiat@hotmail.com', 'Active');
 INSERT INTO `accounts` (`username`, `password`, `email`,`accountStatus`)
-VALUES ('yikiat3', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'yikiat@hotmail.com', 'active');
+VALUES ('yikiat3', '$2b$10$QHWQvUhmxoCTqsLivcuE.OcE227AEG03Eb70lOeeNlnCxdvb4KDxe', 'yikiat@hotmail.com', 'Active');
 ALTER TABLE `accounts` ADD PRIMARY KEY (`username`);
 ALTER TABLE `accounts` ADD UNIQUE (`username`);
 
@@ -31,6 +33,8 @@ CREATE TABLE IF NOT EXISTS `user_group` (
     `username` varchar(50),
     `usergroup` varchar(50)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+INSERT INTO `user_group` ( `username`, `usergroup`) 
+VALUES ('admin', 'admin');
 INSERT INTO `user_group` ( `username`, `usergroup`) 
 VALUES ('yikiat1', 'users');
 INSERT INTO `user_group` ( `username`, `usergroup`) 

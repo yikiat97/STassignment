@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
+
   let isAuthenticated = false; // Replace with your actual authentication check
 
   onMount(() => {
@@ -11,7 +12,5 @@
   });
 </script>
 
-{#if isAuthenticated}
-  <h1>Welcome to the root page!</h1>
-{/if}
+
 
