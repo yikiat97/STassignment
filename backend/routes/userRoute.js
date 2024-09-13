@@ -15,7 +15,11 @@ router.post("/addNewGroup",verifyTokenWithIPAndBrowser("admin"),userController.i
 router.put("/updateUser", verifyTokenWithIPAndBrowser('admin'), userController.updateUserController);
 router.post('/login', userController.login);
 router.post('/register', verifyTokenWithIPAndBrowser('admin'), userController.register);
-router.put("/updateUser", authenticateToken, userController.updateUserController);
+router.put(
+  "/updateProfile",
+  authenticateToken,
+  userController.updateProfileController
+);
 router.delete("/userDelete/:id", userController.deletion);
 
 

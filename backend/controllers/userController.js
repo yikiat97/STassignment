@@ -131,6 +131,27 @@ const updateUserController = async (req, res) => {
   }
 };
 
+const updateProfileController = async (req, res) => {
+  const { username, email, password, accountStatus, usergroups } = req.body;
+
+  try {
+    // Call the service to update the user
+    const result = await userService.updateUser(
+      username,
+      email,
+      password,
+      accountStatus,
+      usergroups
+    );
+
+    // Send success response
+    return res.status(200).json(result);
+  } catch (error) {
+    // Catch any errors thrown from the service and send error response
+    return res.status(400).json({ message: error.message });
+  }
+};
+;
 
 const deletion = async (req, res) => {
   const { id } = req.params;
@@ -163,5 +184,6 @@ module.exports = {
   register,
   updateUserController,
   deletion,
-  getResult
+  getResult,
+  updateProfileController
 };

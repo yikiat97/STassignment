@@ -58,7 +58,7 @@ onMount(async () => {
   function submitEditProfile(updatedProfile){
 
     console.log(updatedProfile)
-  const response =  axios.put(ApiUrl + '/updateUser', updatedProfile, {
+  const response =  axios.put(ApiUrl + '/updateProfile', updatedProfile, {
     withCredentials: true  
     }).then(response => {
     console.log("Status:", response);  
