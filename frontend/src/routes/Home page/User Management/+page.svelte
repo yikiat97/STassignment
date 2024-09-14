@@ -142,7 +142,7 @@ function addGroup(index) {
 
 // @ts-ignore
 function saveChanges(index) {
-  users[index].editMode = false;
+  
   console.log('Saved before post:',users[index]);
 
   const response =  axios.put(ApiUrl + '/updateUser', users[index], {
@@ -150,12 +150,13 @@ function saveChanges(index) {
     }).then(response => {
     console.log("Status:", response);  // Logs the status, e.g., 200
     getAllUsers()
+    users[index].editMode = false;
     customAlert("Updated Profile")
 
   })
   .catch(error => {
     console.error("Error:", error);
-    getAllUsers()
+    //getAllUsers()
     handleError(error.response.data);
     /////////////////////////////////////////////////// rmb change Forbidden: You do not have access to this resource 
   });
@@ -305,7 +306,7 @@ function addNewGroup(){
                 {/each}
                 {#if NewUserShowDropdown}
                   <!-- Show dropdown to add group -->
-                  <select bind:value={NewUserSelectedGroup} on:click={() => addNewUserGroup()}>
+                  <select bind:value={NewUserSelectedGroup} on:change={() => addNewUserGroup()}>
                     <option value="" disabled>Select a group</option>
                     {#each distinctGroups as distinctGroup}
                       <option value={distinctGroup}>{distinctGroup}</option>

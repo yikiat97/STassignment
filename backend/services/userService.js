@@ -146,6 +146,12 @@ const userRegister = async (username, email, password, active, groups) => {
       [username]
     );
 
+    if (email){
+      if (!email.includes("@")){
+        throw new Error("Please use proper email");
+      }
+    }
+
     if (existingUser.length > 0) {
       throw new Error("Username is already in use");
     }
@@ -197,6 +203,11 @@ const userRegister = async (username, email, password, active, groups) => {
 const updateUser = async (username, email, password, active, groups) => {
   if(username == "admin"){
     throw new Error("This is root admin, cannot be changed");
+  }
+  if (email){
+    if (!email.includes("@")){
+      throw new Error("Please use proper email");
+    }
   }
   try {
     const [existingUser] = await db.query(
@@ -294,6 +305,13 @@ const updateProfile = async (username, email, password, active, groups) => {
   if (username == "admin") {
     throw new Error("This is root admin, cannot be changed");
   }
+
+  if (email){
+    if (!email.includes("@")){
+      throw new Error("Please use proper email");
+    }
+  }
+
   try {
     const [existingUser] = await db.query(
       "SELECT * FROM accounts WHERE username = ?",

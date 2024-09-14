@@ -1,6 +1,6 @@
 <script>
 	export let showModal; // boolean
-  import { handleError, handleNetworkError, handleUnauthorizedError, handleValidationError } from '../lib/errorHandler';
+  import { handleError, handleNetworkError, handleUnauthorizedError, handleValidationError } from './errorHandler';
   import { toast, Toaster } from 'svelte-sonner';
 
 	let dialog; // HTMLDialogElement
@@ -10,7 +10,7 @@
 </script>
 
 
-<Toaster />
+
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
 <dialog
@@ -29,7 +29,7 @@
 		<slot name="button" />
 		<button class="modelCloseBtn" on:click={() => dialog.close()}>CANCEL</button>
 		</div>
-	</div>
+	</div><Toaster />
 </dialog>
 
 <style>
@@ -45,7 +45,8 @@
 		padding: 0;
 	}
 	dialog::backdrop {
-		background: rgba(0, 0, 0, 0.3);
+		background: rgba(0, 0, 0, 0.1);
+		/* background: transparent */
 	}
 	dialog > div {
 		padding: 1em;

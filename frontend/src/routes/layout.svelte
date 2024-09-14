@@ -64,7 +64,7 @@ onMount(async () => {
     console.log("Status:", response);  
     getUserdetails(username)
     showModal = false
-    customAlert("Profile Updated")
+    customAlert("Profile Updated, Please refresh the page!")
     
 
 

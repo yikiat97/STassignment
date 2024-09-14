@@ -4,5 +4,5 @@
 </script>
 
 
-<Toaster />
+<Toaster style="z-index: 12;" />
 <slot></slot>

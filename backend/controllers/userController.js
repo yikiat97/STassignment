@@ -104,7 +104,7 @@ const register = async (req, res) => {
     } else {
       res
         .status(500)
-        .json({ message: "An error occurred", error: error.message });
+        .json({ message: error.message  });
     }
   }
 };
