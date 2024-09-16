@@ -34,10 +34,10 @@
           // console.log('Token:', token);
           // console.log('User:', user);
           goto('/Home page/Application')
-          if (user[0].usergroups.split(",").includes("admin") ){
-            userStore.set({ username: user[0].username });   
-            //goto('/Home page/User Management')
-          }
+          // if (user[0].usergroups.split(",").includes("admin") ){
+          //   userStore.set({ username: user[0].username });   
+          //   //goto('/Home page/User Management')
+          // }
  
           
         } catch (error) {

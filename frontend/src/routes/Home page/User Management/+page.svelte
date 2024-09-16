@@ -21,12 +21,15 @@ let globalUsername;
 let updatedEmail;
 let password
 
+let originalUsers = [];
+
 const getAllUsers = async() => {
       try{
       const userlist = await axios.get(ApiUrl + '/users', {
         withCredentials: true  
         });
         users = userlist.data
+        originalUsers = JSON.parse(JSON.stringify(userlist.data));
         // users = userlist.data
         console.log(userlist)
     } catch (error) {
@@ -140,12 +143,43 @@ function addGroup(index) {
  users[index].showDropdown = false;
 }
 
+function getChangedFields(index) {
+  const originalUser = originalUsers[index];
+  const currentUser = users[index];
+  let changedFields = {};
+
+  if (originalUser.email !== currentUser.email) {
+    changedFields.email = currentUser.email;
+  }
+  if (originalUser.password !== currentUser.password) {
+    changedFields.password = currentUser.password;
+  }
+  if (originalUser.accountStatus !== currentUser.accountStatus) {
+    changedFields.accountStatus = currentUser.accountStatus;
+  }
+  if (JSON.stringify(originalUser.usergroups) !== JSON.stringify(currentUser.usergroups)) {
+    changedFields.usergroups = currentUser.usergroups;
+  }
+
+  // Add the username for identification
+  changedFields.username = currentUser.username;
+
+  return changedFields;
+}
+
+
 // @ts-ignore
 function saveChanges(index) {
-  
-  console.log('Saved before post:',users[index]);
+  const changedFields = getChangedFields(index);
 
-  const response =  axios.put(ApiUrl + '/updateUser', users[index], {
+  if (Object.keys(changedFields).length <= 1) { // Only username is present
+  customAlert("No changes detected.");
+  users[index].editMode = false;
+  return;
+}
+  console.log('Saved before post:',changedFields);
+
+  const response =  axios.put(ApiUrl + '/updateUser', changedFields, {
     withCredentials: true  
     }).then(response => {
     console.log("Status:", response);  // Logs the status, e.g., 200

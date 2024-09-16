@@ -201,105 +201,119 @@ const userRegister = async (username, email, password, active, groups) => {
 
 
 const updateUser = async (username, email, password, active, groups) => {
-  if(username == "admin"){
-    throw new Error("This is root admin, cannot be changed");
+  if (username === "admin") {
+    throw new Error("This is the root admin, cannot be changed.");
   }
-  if (email){
-    if (!email.includes("@")){
-      throw new Error("Please use proper email");
-    }
+
+  // Validate email format if provided
+  if (email && !email.includes("@")) {
+    throw new Error("Please use a proper email.");
   }
+
   try {
+    // Check if the user exists
     const [existingUser] = await db.query(
       "SELECT * FROM accounts WHERE username = ?",
       [username]
     );
     if (existingUser.length === 0) {
-      throw new Error("Username does not exist");
+      throw new Error("Username does not exist.");
     }
+
+    // Prepare the dynamic update query
+    let query = "UPDATE accounts SET ";
+    let params = [];
+    let hasChanges = false;
+
+    // Handle email update if provided
+    if (email && email !== existingUser[0].email) {
+      query += "email = ?, ";
+      params.push(email);
+      hasChanges = true;
+    }
+
+    // Handle password update if provided
     let hashedPassword;
-    if (password){  
-      if (password != existingUser[0].password) {
-        if (password.length < 8 || password.length > 10) {
-          throw new Error("Password must be between 8 and 10 characters long.");
-        }
-
-        const hasAlphabet = /[A-Za-z]/.test(password);
-        const hasNumber = /[0-9]/.test(password);
-        const hasSpecialChar = /[@$!%*?&]/.test(password);
-
-        if (!hasAlphabet || !hasNumber || !hasSpecialChar) {
-          throw new Error(
-            "Password must contain at least one letter, one number, and one special character."
-          );
-        }
-        hashedPassword = await bcrypt.hash(password, 10);
+    if (password && password !== existingUser[0].password) {
+      if (password.length < 8 || password.length > 10) {
+        throw new Error("Password must be between 8 and 10 characters long.");
       }
 
-        // Update user details in the accounts table
-        const result = await db.query(
-          "UPDATE accounts SET email = ?, password = ?, accountStatus = ? WHERE username = ?",
-          [email, hashedPassword || existingUser[0].password, active, username]
+      const hasAlphabet = /[A-Za-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecialChar = /[@$!%*?&]/.test(password);
+
+      if (!hasAlphabet || !hasNumber || !hasSpecialChar) {
+        throw new Error(
+          "Password must contain at least one letter, one number, and one special character."
         );
-        // Handle updating the groups for the user
-        if (groups) {
-          // Fetch the current groups for the user
-          const [existingGroups] = await db.query(
-            "SELECT usergroup FROM user_group WHERE username = ?",
-            [username]
-          );
-          const existingGroupList = existingGroups.map(
-            group => group.usergroup
-          );
-          // Find groups that need to be deleted (present in the current groups but not in the new list)
-          const groupsToDelete = existingGroupList.filter(
-            group => !groups.includes(group)
-          );
-
-          // Find groups that need to be inserted (present in the new list but not in the current groups)
-          const groupsToInsert = groups.filter(
-            group => !existingGroupList.includes(group)
-          );
-
-          // Delete groups that are no longer valid
-          if (groupsToDelete.length > 0) {
-            await db.query(
-              "DELETE FROM user_group WHERE username = ? AND usergroup IN (?)",
-              [username, groupsToDelete]
-            );
-          }
-
-          // Insert new groups, checking for duplicates
-          for (const group of groupsToInsert) {
-            const [existingGroup] = await db.query(
-              "SELECT * FROM user_group WHERE username = ? AND usergroup = ?",
-              [username, group]
-            );
-
-            if (existingGroup.length > 0) {
-              throw new Error(
-                `Duplicate group assignment: User '${username}' is already assigned to group '${group}'`
-              );
-            }
-
-            // Insert the new group
-            await db.query(
-              "INSERT INTO user_group (username, usergroup) VALUES (?, ?)",
-              [username, group]
-            );
-          }
-        }
-      
-    } else {
-        throw new Error("Password must not be empty.");
       }
 
+      hashedPassword = await bcrypt.hash(password, 10);
+      query += "password = ?, ";
+      params.push(hashedPassword);
+      hasChanges = true;
+    }
+
+    // Handle account status (active) update if provided
+    if (active !== undefined && active !== existingUser[0].accountStatus) {
+      query += "accountStatus = ?, ";
+      params.push(active);
+      hasChanges = true;
+    }
+
+    // Remove trailing comma and space
+    if (hasChanges) {
+      query = query.slice(0, -2); // Remove the last comma and space
+      query += " WHERE username = ?";
+      params.push(username);
+
+      // Execute the update query only if there are changes
+      await db.query(query, params);
+    }
+
+    // Handle updating the groups for the user if provided
+    if (groups) {
+      // Fetch the current groups for the user
+      const [existingGroups] = await db.query(
+        "SELECT usergroup FROM user_group WHERE username = ?",
+        [username]
+      );
+      const existingGroupList = existingGroups.map(group => group.usergroup);
+
+      // Find groups that need to be deleted (present in the current groups but not in the new list)
+      const groupsToDelete = existingGroupList.filter(
+        group => !groups.includes(group)
+      );
+
+      // Find groups that need to be inserted (present in the new list but not in the current groups)
+      const groupsToInsert = groups.filter(
+        group => !existingGroupList.includes(group)
+      );
+
+      // Delete groups that are no longer valid
+      if (groupsToDelete.length > 0) {
+        await db.query(
+          "DELETE FROM user_group WHERE username = ? AND usergroup IN (?)",
+          [username, groupsToDelete]
+        );
+      }
+
+      // Insert new groups, checking for duplicates
+      for (const group of groupsToInsert) {
+        await db.query(
+          "INSERT INTO user_group (username, usergroup) VALUES (?, ?)",
+          [username, group]
+        );
+      }
+    }
 
     return { message: "User updated successfully!" };
   } catch (error) {
     throw new Error(error.message);
   }
 };
+
 
 const updateProfile = async (username, email, password, active, groups) => {
   if (username == "admin") {
