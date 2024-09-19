@@ -12,14 +12,10 @@
 	
 let isAdmin = false;
 let showModal = false;
-let ProfileModal = false;
 let AddedGroupName = '';
 let users = [];
 let distinctGroups = [];
 let globalUsername;
-
-let updatedEmail;
-let password
 
 let originalUsers = [];
 
@@ -191,11 +187,8 @@ function saveChanges(index) {
   .catch(error => {
     console.error("Error:", error);
     //getAllUsers()
-    handleError(error.response.data);
-    /////////////////////////////////////////////////// rmb change Forbidden: You do not have access to this resource 
+    handleError(error.response.data); 
   });
-
-  
 }
 
 // @ts-ignore
@@ -224,39 +217,34 @@ function submitNewUser() {
         throw new Error("Password must contain at least one letter, one number, and one special character.");
 
       }
-      
-        // @ts-ignore
-       //users = [...users, { ...newUser }];
 
-    
+      console.log('New user list before post:', newUser);
 
-        console.log('New user list before post:', newUser);
+      const response =  axios.post(ApiUrl + '/register', newUser, {
+        withCredentials: true  
+        }).then(response => {
+        console.log("Status:", response.status);  // Logs the status, e.g., 200
+        newUser = {
+            // @ts-ignore
+            username: "",
+            // @ts-ignore
+            email: "",
+            // @ts-ignore
+            group: [],
+            // @ts-ignore
+            password: "",
+            active: 'active',
+            editMode: false
+            };
 
-        const response =  axios.post(ApiUrl + '/register', newUser, {
-          withCredentials: true  
-          }).then(response => {
-          console.log("Status:", response.status);  // Logs the status, e.g., 200
-          newUser = {
-              // @ts-ignore
-              username: "",
-              // @ts-ignore
-              email: "",
-              // @ts-ignore
-              group: [],
-              // @ts-ignore
-              password: "",
-              active: 'active',
-              editMode: false
-              };
-
-              getAllUsers()
-              customAlert("New User Added")
-        })
-        .catch(error => {
-          console.error("Error:", error);
-          handleError(error.response.data);
-         
-        });
+            getAllUsers()
+            customAlert("New User Added")
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        handleError(error.response.data);
+        
+      });
 
         
     } else {

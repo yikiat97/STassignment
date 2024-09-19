@@ -50,3 +50,98 @@ SELECT * FROM accounts;
 select * from user_group;
 
 SELECT DISTINCT usergroup FROM user_group
+
+
+
+
+
+------------------------------------  Assignment 2 ----------------------------------------------
+
+
+
+
+
+
+-- Use the newly created database
+USE `nodelogin`;
+
+
+-- Add the Application table (as mentioned in your schema description)
+DROP TABLE IF EXISTS `task`;
+DROP TABLE IF EXISTS `plan`;
+DROP TABLE IF EXISTS `application`;
+CREATE TABLE IF NOT EXISTS `application` (
+  App_Acronym VARCHAR(50) PRIMARY KEY NOT NULL,
+  App_Description TEXT,
+  App_Rnumber INT NOT NULL,
+  App_startDate DATE NOT NULL,
+  App_endDate DATE NOT NULL,
+  App_permit_Open JSON,
+  App_permit_toDoList JSON,
+  App_permit_Doing JSON,
+  App_permit_Done JSON,
+  App_permit_create JSON
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+
+CREATE TABLE IF NOT EXISTS `plan` (
+  Plan_MVP_name VARCHAR(100) PRIMARY KEY NOT NULL,  -- Primary key
+  Plan_app_Acronym VARCHAR(50) NOT NULL,            -- Foreign key to application
+  Plan_startDate DATE NOT NULL,                              -- Start date (use DATE instead of INT for date fields)
+  Plan_endDate DATE NOT NULL,                                -- End date (use DATE)
+  FOREIGN KEY (Plan_app_Acronym) REFERENCES application(App_Acronym) 
+    ON DELETE CASCADE                               -- If an application is deleted, delete the plan too
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+
+CREATE TABLE IF NOT EXISTS `task` (
+  Task_id VARCHAR(100) PRIMARY KEY NOT NULL,        -- Primary key
+  Task_plan VARCHAR(100),                           -- Foreign key to Plan_MVP_name, can be NULL
+  Task_app_Acronym VARCHAR(50) NOT NULL,            -- Foreign key to application
+  Task_name VARCHAR(255) NOT NULL,                  -- Task name
+  Task_description VARCHAR(255),                    -- Task description
+  Task_notes MEDIUMTEXT,                            -- Task notes
+  Task_state VARCHAR(50),                           -- Task state (e.g., ToDo, InProgress, Done)
+  Task_creator VARCHAR(50),                         -- Task creator
+  Task_owner VARCHAR(50),                           -- Task owner
+  Task_createDate DATE,                             -- Task creation date (use DATE for dates)
+  FOREIGN KEY (Task_plan) REFERENCES plan(Plan_MVP_name) 
+    ON DELETE SET NULL,                             -- If plan is deleted, set Task_plan to NULL
+  FOREIGN KEY (Task_app_Acronym) REFERENCES application(App_Acronym) 
+    ON DELETE CASCADE                               -- If an application is deleted, delete tasks too
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+
+-- Example insert for the application table using JSON arrays
+INSERT INTO `application` 
+(App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done, App_permit_create) 
+VALUES 
+('TMS1', 'Task Management System1', 1, '2024-01-01', '2024-12-31', 
+ JSON_ARRAY('PL_forTMS1', 'PM_forTMS1'), 
+ JSON_ARRAY('PM_forTMS1', 'PL_forTMS1', 'DEV_forTMS1'), 
+ JSON_ARRAY('PM_forTMS1', 'DEV_forTMS1'), 
+ JSON_ARRAY('DEV_forTMS1', 'PL_forTMS1'), 
+ JSON_ARRAY('PL_forTMS1')
+);
+
+-- Insert a Plan
+INSERT INTO `plan` (Plan_MVP_name, Plan_app_Acronym, Plan_startDate, Plan_endDate)
+VALUES ('MVP1', 'TMS1', '2024-01-01', '2024-06-30');
+
+-- Insert a Task
+INSERT INTO `task` (Task_id, Task_plan, Task_app_Acronym, Task_name, Task_description, Task_notes, Task_state, Task_creator, Task_owner, Task_createDate)
+VALUES ('TMS1_1', 'MVP1', 'TMS1', 'Implement Login', 'Implement user login feature', 'Handle validation and error messages', 'Open', 'PL_forTMS1', 'PM_forTMS1', '2024-01-15');
+
+
+SELECT * from application
+
+SELECT a.* FROM application a
+JOIN user_group ug ON JSON_CONTAINS(a.App_permit_Open, JSON_QUOTE(ug.usergroup)) 
+                 OR JSON_CONTAINS(a.App_permit_toDoList, JSON_QUOTE(ug.usergroup))
+                 OR JSON_CONTAINS(a.App_permit_Doing, JSON_QUOTE(ug.usergroup))
+                 OR JSON_CONTAINS(a.App_permit_Done, JSON_QUOTE(ug.usergroup))
+                 OR JSON_CONTAINS(a.App_permit_create, JSON_QUOTE(ug.usergroup))
+WHERE ug.username = 'yikiat2';  -- Change 'admin' to the desired username

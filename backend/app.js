@@ -3,6 +3,7 @@ const dotenv = require('dotenv')
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const userRoutes = require('./routes/userRoute');
+const tms = require('./routes/tmsRoutes')
 const { verifyTokenWithIPAndBrowser } = require("./middleware/authMiddleware");
 
 
@@ -20,6 +21,7 @@ dotenv.config();
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api', userRoutes);
+app.use('/api', tms)
 
 
 app.listen(port, () => {

@@ -1,5 +1,5 @@
 const dotenv = require("dotenv");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/database"); // Import the database connection
 
@@ -77,6 +77,23 @@ const insertNewGroupName = async (groupName) => {
     // Validate the group name
     if (!groupName || groupName.trim() === "") {
       const error = new Error("Group name is required");
+      error.status = 400;
+      throw error;
+    }
+
+    if (groupName.length > 50) {
+      const error = new Error(
+        "Group name cannot be longer than 50 characters"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    const validGroupName = /^[a-zA-Z0-9_]+$/;
+    if (!validGroupName.test(groupName)) {
+      const error = new Error(
+        "Group name can only contain letters, numbers, and underscores"
+      );
       error.status = 400;
       throw error;
     }
@@ -205,9 +222,14 @@ const updateUser = async (username, email, password, active, groups) => {
     throw new Error("This is the root admin, cannot be changed.");
   }
 
-  // Validate email format if provided
-  if (email && !email.includes("@")) {
-    throw new Error("Please use a proper email.");
+  if (email) {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const validEmail = regex.test(email);
+
+    if(!validEmail){
+      throw new Error("Please use a proper email.");
+    }
+    
   }
 
   try {
@@ -320,9 +342,12 @@ const updateProfile = async (username, email, password, active, groups) => {
     throw new Error("This is root admin, cannot be changed");
   }
 
-  if (email){
-    if (!email.includes("@")){
-      throw new Error("Please use proper email");
+  if (email) {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const validEmail = regex.test(email);
+
+    if (!validEmail) {
+      throw new Error("Please use a proper email.");
     }
   }
 
