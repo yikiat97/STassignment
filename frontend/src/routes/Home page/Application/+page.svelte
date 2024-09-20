@@ -5,26 +5,41 @@
   import { userStore } from '../../../lib/stores';
   import Layout from '../../layout.svelte';
   import { page } from '$app/stores';
-  import { handleError, handleNetworkError, handleUnauthorizedError, handleValidationError } from '../../../lib/errorHandler';
+  import { handleError, customError, customAlert} from '../../../lib/errorHandler';
   const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
   import Modal from '../../../lib/AddGroupModel.svelte'
+
+  let App_Name_URL;
 
   let isAdmin = false;
   let globalUsername;
 
   let showModal = false;
-  let AppAcronym = '';
-  let AppRNumber = '';
-  let AppDescription = '';
-  let StartDate = '';
-  let EndDate = '';
-  let AppPermitCreate = '';
-  let AppPermitOpen = '';
-  let AppPermitToDo = '';
-  let AppPermitDoing = '';
-  let AppPermitDone = '';
-
+  let App_Acronym = '';
+  let App_Rnumber = '';
+  let App_Description = '';
+  let App_startDate = '';
+  let App_endDate = '';
+  let App_permit_create = '';
+  let App_permit_Open = '';
+  let App_permit_toDoList = '';
+  let App_permit_Doing = '';
+  let App_permit_Done = '';
   let AppList = [];
+  let distinctGroups = [];
+
+  let newApp = {
+    App_Acronym: null,
+    App_Rnumber: null,
+    App_Description: null,
+    App_startDate: null,
+    App_endDate: null,
+    App_permit_create: null,
+    App_permit_Open: null,
+    App_permit_toDoList: null,
+    App_permit_Doing: null,
+    App_permit_Done: null
+};
 
   const getAllApplication = async() => {
       try{
@@ -34,14 +49,29 @@
 
         AppList = Apps.data
 
-        // console.log(Apps.data)
+         console.log(Apps.data)
     } catch (error) {
        console.error('Access denied:', error.response.data.message);
        handleError(error.response.data);
     }
 }
 
+  const getAllGroups = async() => {
+        try{
+        const grouplist = await axios.get(ApiUrl + '/allGroup', {
+          withCredentials: true  
+          });
+          distinctGroups = grouplist.data
+          console.log(grouplist)
+      }catch (error) {
+        console.error('Access denied:', error.response.data.message);
+        handleError(error.response.data);
+      }
+  }
+
   onMount(async () => {
+
+    
     try {
         const response = await axios.get(ApiUrl + '/Application   ', {
         withCredentials: true  
@@ -55,14 +85,83 @@
         if (response.data.result.includes("admin") ){
             isAdmin = true      
         }
-
         getAllApplication()
+        getAllGroups()
+
     } catch (error) {
         goto('/login');
         console.error('Access denied:', error.response.data.message);
         handleError(error.response.data);
     }
   });
+
+  function convertIntToDate(intDate) {
+    console.log(intDate)
+    const dateStr = intDate.toString();
+    const year = dateStr.slice(0, 4);
+    const month = dateStr.slice(4, 6);
+    const day = dateStr.slice(6, 8);
+    return `${year}-${month}-${day}`;
+  }
+
+
+  let NewUserSelectedGroup ="";
+  function addNewAppPermitGroup(permitKey) {
+    if (NewUserSelectedGroup && !newApp[permitKey].includes(NewUserSelectedGroup)) {
+      // Add the selected group to the correct permit array
+      newApp[permitKey] = [...newApp[permitKey], NewUserSelectedGroup];
+    }
+        // Reset selection and close dropdown after adding
+    NewUserSelectedGroup = "";
+    //GroupShowDropdown = false;
+  }
+
+  function NewPermitRemoveGroup(permitKey, index) {
+    newApp[permitKey].splice(index, 1);
+    newApp[permitKey] = [...newApp[permitKey]];
+  }
+
+  function submitNewApp(){
+    console.log("submitNewApp variable:",newApp)
+      const response =  axios.post(ApiUrl + '/InsertApplications', newApp, {
+        withCredentials: true  
+        }).then(response => {
+        console.log("Status:", response.status);  // Logs the status, e.g., 200
+        newApp = {
+            App_Acronym: null,
+            App_Rnumber: null,
+            App_Description: null,
+            App_startDate: null,
+            App_endDate: null,
+            App_permit_create: null,
+            App_permit_Open: null,
+            App_permit_toDoList: null,
+            App_permit_Doing: null,
+            App_permit_Done: null
+        };
+
+            getAllApplication()
+            customAlert("New APP Added")
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        handleError(error.response.data);
+        
+      });    
+  }
+
+//                 {
+//   "App_Acronym": "TMS3",
+//   "App_Rnumber": 1,
+//   "App_App_startDate": "2024-01-01",
+//   "App_App_endDate": "2024-12-31",
+//   "App_permit_Open": ["PL_forTMS1", "PM_forTMS1", "admin"],
+//   "App_permit_toDoList": ["PM_forTMS1", "PL_forTMS1", "DEV_forTMS1"],
+//   "App_permit_Doing": ["PM_forTMS1", "DEV_forTMS1"],
+//   "App_permit_Done": ["DEV_forTMS1", "PL_forTMS1"],
+//   "App_permit_create": ["PL_forTMS1"]
+// } 
+
 
 </script>
 
@@ -90,7 +189,7 @@
 
 {#each AppList as app, appIndex}
 
-    <div class="card">
+    <div class="card" on:click={goto(`/Home%20page/TMS/?App_Acronym=${app.App_Acronym}`) }>
       <div class="left">
         <h1 class="title">App Name: </h1>
         <h1 class="title2" style="height: 100px; margin-bottom:100px" >App description: </h1>
@@ -100,10 +199,11 @@
       <div class="right">
         <p>{app.App_Acronym}</p>
         <p style="height: 200px; max-height:175px; max-width:320px; overflow: auto; ">{app.App_Description}</p>     
-        <p>{app.App_startDate}</p>
-        <p>{app.App_endDate}</p>
+        <p>{convertIntToDate(app.App_startDate)}</p>
+        <p>{convertIntToDate(app.App_endDate)}</p>
       </div>
     </div>
+    
   {/each}
 
   </div>
@@ -117,48 +217,109 @@
 	</h2>
 
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">AppAcronym:</label>
-      <input type="text" id="AppAcronym" bind:value={AppAcronym} class="editable" />
+      <label for="Username" style="margin-bottom: 10px;">App_Acronym:</label>
+      <input type="text" id="App_Acronym" bind:value={newApp.App_Acronym} class="editable" />
   </div>
 
   <div class="input-container">
-      <label for="Email" style="margin-bottom: 10px; margin-right:31px">AppRNumber:</label>
-      <input type="text" id="AppRNumber" bind:value={AppRNumber} class="editable" />
+      <label for="Email" style="margin-bottom: 10px; margin-right:31px">App_Rnumber:</label>
+      <input type="number" id="App_Rnumber" bind:value={newApp.App_Rnumber} class="editable" />
   </div>
   <div class="input-container">
-      <label for="Password" style="margin-bottom: 10px;margin-right:8px">AppDescription:</label>
-      <input type="password" id="AppDescription" bind:value={AppDescription} class="editable" />
+      <label for="Password" style="margin-bottom: 10px;margin-right:8px">App_Description:</label>
+      <input type="text" id="App_Description" bind:value={newApp.App_Description} class="editable" />
   </div>
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">StartDate:</label>
-      <input type="date" id="StartDate" bind:value={StartDate}  class="editable" />
+      <label for="Username" style="margin-bottom: 10px;">App_startDate:</label>
+      <input type="date" id="App_startDate" bind:value={newApp.App_startDate}  class="editable" />
   </div>
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">EndDate:</label>
-      <input type="date" id="EndDate" bind:value={EndDate}  class="editable" />
+      <label for="Username" style="margin-bottom: 10px;">App_endDate:</label>
+      <input type="date" id="App_endDate" bind:value={newApp.App_endDate}  class="editable" />
   </div>
+
+  <div class="tags-container input-container">
+    <label for="App_permit_create" style="margin-bottom: 10px;">App_permit_create:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">
+      
+          <span class="tag">
+            {newApp.App_permit_create} 
+          </span>
+ 
+      </div>
+        <select bind:value={newApp.App_permit_create} >
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
+  </div>
+
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">AppPermitCreate:</label>
-      <input type="text" id="AppPermitCreate" bind:value={AppPermitCreate}  class="editable" />
+    <label for="App_permit_Open" style="margin-bottom: 10px;">App_permit_Open:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">    
+          <span class="tag">
+            {newApp.App_permit_Open} 
+          </span>
+      </div>
+        <select bind:value={newApp.App_permit_Open}>
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
+   
   </div>
+
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">AppPermitOpen:</label>
-      <input type="text" id="AppPermitOpen" bind:value={AppPermitOpen}  class="editable" />
+      <label for="Username" style="margin-bottom: 10px;">App_permit_toDoList:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">
+    
+          <span class="tag">
+            {newApp.App_permit_toDoList} 
+          </span>
+
+      </div>
+        <select bind:value={newApp.App_permit_toDoList}>
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
   </div>
+
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">AppPermitToDo:</label>
-      <input type="text" id="AppPermitToDo" bind:value={AppPermitToDo}  class="editable" />
+      <label for="Username" style="margin-bottom: 10px;">App_permit_Doing:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">
+          <span class="tag">
+            {newApp.App_permit_Doing} 
+          </span>
+      </div>
+        <select bind:value={newApp.App_permit_Doing}>
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
   </div>
+
   <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">AppPermitDoing:</label>
-      <input type="text" id="AppPermitDoing" bind:value={AppPermitDoing}  class="editable" />
+      <label for="Username" style="margin-bottom: 10px;">App_permit_Done:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">
+          <span class="tag">
+            { newApp.App_permit_Done} 
+          </span>
+      </div>
+        <select bind:value={newApp.App_permit_Done} >
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
   </div>
-  <div class="input-container">
-      <label for="Username" style="margin-bottom: 10px;">AppPermitDone:</label>
-      <input type="text" id="AppPermitDone" bind:value={AppPermitDone}  class="editable" />
-  </div>
+
   <div slot="button">
-      <button class="modelCloseBtn" on:click={() => addNewGroup()}>ADD</button>
+      <button class="modelCloseBtn" on:click={() => submitNewApp()}>ADD</button>
       <!-- <button class="modelCloseBtn" on:click={() => showModal = false}>CANCEL</button> not fixeddddd -->
   </div>
       
@@ -237,7 +398,7 @@ a.active {
   background-color: #C9C9C9; /* Background color when editable */
 }
 
-input {
+input, select {
   margin-bottom: 20px;
   padding: 10px;
   width: 50px;
@@ -249,19 +410,41 @@ input {
 }
 
 .input-container {
-    display: flex;
-    align-items: center; /* This centers the items vertically */
-    justify-content: center;
-    gap: 10px; /* Adds space between the label and the input */
+  display: flex; /* Use flexbox to align label and input side by side */
+  align-items: center; /* Align vertically in the center */
+  justify-content: space-between;
+  margin-bottom: 15px; /* Add spacing between fields */
 }
 
 .input-container label {
-    margin-right: 5px; /* Optional: add more space between the label and the input */
-    white-space: nowrap; /* Keeps the label text on one line */
+  flex: 1; /* Label takes up equal space */
+  margin-left: 20px; /* Spacing between label and input */
+  text-align: left; /* Align label text to the right */
 }
 
-.input-container input {
-    flex-grow: 1; /* Allows the input to take up any remaining space */
+
+.input-container input
+ {
+  flex: 2; /* Input takes up equal space */
+  padding: 5px;
+  font-size: 1rem;
+  box-sizing: border-box; /* Ensure padding doesn’t increase input width */
+}
+
+.input-container select,
+.input-container button
+ {
+  flex: 2; /* Input takes up equal space */
+  font-size: 1rem;
+  box-sizing: border-box; /* Ensure padding doesn’t increase input width */
+  max-width: 70px;
+}
+
+.spanBox{
+  flex: 2; /* Input takes up equal space */
+  padding: 5px;
+  font-size: 1rem;
+  box-sizing: border-box; /* Ensure padding doesn’t increase input width */
 }
 
 .modelCloseBtn{
@@ -333,4 +516,37 @@ p {
 
 
 /* ////////////////////////////////////////////// end card ////////////////////////////////// */
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background-color: #bbb7b7;
+  padding: 5px 10px;
+  border-radius: 5px;
+  margin: 5px;
+  display: inline-flex;
+  align-items: left;
+  color: black;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  margin-left: 5px;
+  cursor: pointer;
+  color: red;
+}
+
+.add-btn {
+  margin: 5px;
+  cursor: pointer;
+  background-color: #bbb7b7;
+  color: black;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+}
 </style>

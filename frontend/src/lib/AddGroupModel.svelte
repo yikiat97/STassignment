@@ -35,11 +35,11 @@
 <style>
 	.ModalContainer{
 		text-align: center;
-		width: 550px;
+		width: 850px;
 		/* height: 180px; */
 	}
 	dialog {
-		max-width: 700px;
+		max-width: 900px;
 		border-radius: 0.2em;
 		border: none;
 		padding: 0;

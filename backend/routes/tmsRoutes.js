@@ -15,6 +15,8 @@ router.get(
   tmsController.getAllApplicationByUsername
 );
 
+router.post("/InsertApplications", tmsController.insertApplicationController);
+
 
 
 module.exports = router;
