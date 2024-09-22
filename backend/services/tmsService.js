@@ -142,7 +142,98 @@ const insertApplication = async appData => {
 };
 
 
+const updateApplication = async (appData) => {
+  try {
+    // Destructure the appData object to extract values
+    let {
+      App_Acronym,
+      App_Rnumber,
+      App_Description,
+      App_startDate,
+      App_endDate,
+      App_permit_Open,
+      App_permit_toDoList,
+      App_permit_Doing,
+      App_permit_Done,
+      App_permit_create
+    } = appData;
+
+    // Ensure the mandatory App_Acronym is provided
+    if (!App_Acronym) {
+      throw new Error("App_Acronym is required to update the application");
+    }
+
+    // Initialize query for updating the application
+    let query = `UPDATE application SET `;
+    let values = [];
+
+    // Conditionally add fields to update only if they are provided
+    if (App_Rnumber) {
+      query += `App_Rnumber = ?, `;
+      values.push(App_Rnumber);
+    }
+
+    if (App_Description) {
+      query += `App_Description = ?, `;
+      values.push(App_Description);
+    }
+
+    if (App_startDate) {
+      App_startDate = convertDateToInt(App_startDate);
+      query += `App_startDate = ?, `;
+      values.push(App_startDate);
+    }
+
+    if (App_endDate) {
+      App_endDate = convertDateToInt(App_endDate);
+      query += `App_endDate = ?, `;
+      values.push(App_endDate);
+    }
+
+    if (App_permit_Open) {
+      query += `App_permit_Open = ?, `;
+      values.push(App_permit_Open);
+    }
+
+    if (App_permit_toDoList) {
+      query += `App_permit_toDoList = ?, `;
+      values.push(App_permit_toDoList);
+    }
+
+    if (App_permit_Doing) {
+      query += `App_permit_Doing = ?, `;
+      values.push(App_permit_Doing);
+    }
+
+    if (App_permit_Done) {
+      query += `App_permit_Done = ?, `;
+      values.push(App_permit_Done);
+    }
+
+    if (App_permit_create) {
+      query += `App_permit_create = ?, `;
+      values.push(App_permit_create);
+    }
+
+    // Remove the trailing comma and space
+    query = query.slice(0, -2);
+
+    // Add the WHERE clause to target the specific application
+    query += ` WHERE App_Acronym = ?`;
+    values.push(App_Acronym);
+
+    // Execute the query with the built query and values
+    const [result] = await db.query(query, values);
+
+    return result; // Return result of the query
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 module.exports = {
   getAllApplicationByUsername,
-  insertApplication
+  insertApplication,
+  updateApplication
 };

@@ -37,7 +37,7 @@
 });
 
 let kanbanBoard = {
-    backlog: [
+    open: [
       { id: 1, title: 'Task 1', description: 'Backlog Task', color: '#FF6F61', owner: 'John limmmm' },
       { id: 2, title: 'Task 2', description: 'Backlog Task', color: '#FF6F61', owner: 'Jane' },
     ],
@@ -57,12 +57,53 @@ let kanbanBoard = {
 
     // State to control modal visibility and the selected card
   let showModal = false;
-  let selectedCard = null;
+  let selectedCard =  {
+    taskID: '',
+    title: '',
+    description: '',
+    planName: '', // This will be a dropdown in the modal
+    taskState: 'In Progress',
+    taskCreator: '',
+    taskOwner: '',
+    taskCreateDate: '',
+    notes: ''
+  };
+
+
+
+  let comment = '';
+  let newNotes = selectedCard.notes; // To hold notes dynamically
+
+  // Logic for buttons (conditionally rendered)
+  let taskState = selectedCard.taskState;
+
+  function addComment() {
+  if (comment.trim()) {
+    // Append the new comment to the existing notes, adding a new line
+    selectedCard.notes += `\n${comment}`;
+    
+    // Clear the comment input after adding
+    comment = '';
+  }
+}
 
   // Function to handle card click
   function openModal(card) {
-    selectedCard = card;
+    // selectedCard = card;
     showModal = true;
+    selectedCard = {
+    taskID: 'T001',
+    title: 'Application_1',
+    description: 'Implement login feature',
+    planName: 'MVP Plan', // This will be a dropdown in the modal
+    taskState: 'In Progress',
+    taskCreator: 'John Doe',
+    taskOwner: 'Jane Doe',
+    taskCreateDate: '2024-01-15',
+    notes: 'This is the first note.'
+  };
+ 
+
   }
 
   // Function to close modal
@@ -72,6 +113,178 @@ let kanbanBoard = {
   }
   
 </script>
+
+
+<Layout bind:globalUsername>
+  <span slot="NavContentLeft">Hello, {globalUsername}</span>
+    <div slot="NavContentCenter">
+      {#if isAdmin}
+        <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application'}>Application</a>
+        <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
+      {/if}
+    </div>
+    <div slot="NavContentRight" >Edit here</div>
+  </Layout>
+  
+  <div class="container">
+    <div class="header">
+      <h1 class="head" >Task Management Board</h1>
+      <div class="middle"></div>
+      <div class="CreateApp">
+        <div class="CreateAppBtn" on:click={() => (showModal = true)} >+ Create Plan</div> 
+      </div>
+    </div>
+  </div>
+  
+  <div class="kanban-board">
+    <!-- Backlog Column -->
+    <div class="kanban-column">
+      <h3>Open</h3>
+      {#each kanbanBoard.open as card (card.id)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div class="kanban-card" on:click={() => openModal(card)}>
+          <div class="color-bar" style="background-color: {card.color};"></div>
+          <h4>{card.title}</h4>
+          <p>{card.description}</p>
+          <span class="owner-tag">{card.owner}</span>
+        </div>
+      {/each}
+    </div>
+  
+    <!-- To Do Column -->
+    <div class="kanban-column">
+      <h3>To Do</h3>
+      {#each kanbanBoard.todo as card (card.id)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div class="kanban-card" on:click={() => openModal(card)}>
+          <div class="color-bar" style="background-color: {card.color};"></div>
+          <h4>{card.title}</h4>
+          <p>{card.description}</p>
+          <span class="owner-tag">{card.owner}</span>
+        </div>
+      {/each}
+    </div>
+  
+    <!-- Doing Column -->
+    <div class="kanban-column">
+      <h3>Doing</h3>
+      {#each kanbanBoard.doing as card (card.id)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div class="kanban-card" on:click={() => openModal(card)}>
+          <div class="color-bar" style="background-color: {card.color};"></div>
+          <h4>{card.title}</h4>
+          <p>{card.description}</p>
+          <span class="owner-tag">{card.owner}</span>
+        </div>
+      {/each}
+    </div>
+  
+    <!-- Review Column -->
+    <div class="kanban-column">
+      <h3>Review</h3>
+      {#each kanbanBoard.review as card (card.id)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div class="kanban-card" on:click={() => openModal(card)}>
+          <div class="color-bar" style="background-color: {card.color};"></div>
+          <h4>{card.title}</h4>
+          <p>{card.description}</p>
+          <span class="owner-tag">{card.owner}</span>
+        </div>
+      {/each}
+    </div>
+  
+    <!-- Done Column -->
+    <div class="kanban-column">
+      <h3>Done</h3>
+      {#each kanbanBoard.done as card (card.id)}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div class="kanban-card" on:click={() => openModal(card)}>
+          <div class="color-bar" style="background-color: {card.color};"></div>
+          <h4>{card.title}</h4>
+          <p>{card.description}</p>
+          <span class="owner-tag">{card.owner}</span>
+        </div>
+      {/each}
+    </div>
+  </div>
+  
+  {#if showModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="modal" on:click={closeModal}>
+    <div class="modal-content" on:click|stopPropagation>
+      <!-- Modal Header -->
+      <!-- <button class="modal-close-btn" on:click={closeModal}>&times;</button> -->
+      <div class="modal-header">{selectedCard.title}</div>
+      
+      <!-- Modal Body -->
+      <div class="modal-body">
+        <!-- Left Side (Task Details) -->
+        <div class="modal-left">
+          <div class="details-row">
+            <strong>Task ID:</strong> <span>{selectedCard.taskID}</span>
+          </div>
+          <div class="details-row">
+            <strong>Task Name:</strong> <span>{selectedCard.title}</span>
+          </div>
+          <div class="details-row">
+            <strong>Plan Name:</strong>
+            <span>
+              <select>
+                <option>{selectedCard.planName}</option>
+                <option>Plan 2</option>
+                <option>Plan 3</option>
+              </select>
+            </span>
+          </div>
+          <div class="details-row">
+            <strong>Task State:</strong> <span>{selectedCard.taskState}</span>
+          </div>
+          <div class="details-row">
+            <strong>Task Creator:</strong> <span>{selectedCard.taskCreator}</span>
+          </div>
+          <div class="details-row">
+            <strong>Task Owner:</strong> <span>{selectedCard.taskOwner}</span>
+          </div>
+          <div class="details-row">
+            <strong>Task Create Date:</strong> <span>{selectedCard.taskCreateDate}</span>
+          </div>
+        </div>
+
+        <!-- Right Side (Notes and Comments) -->
+        <div class="modal-right">
+          <!-- Notes Section -->
+          <div class="notes-section">
+              <p>{selectedCard.notes}</p>
+          </div>
+
+          <!-- Comments Section -->
+          <div class="comments-section">
+            <textarea rows="4" bind:value={comment} placeholder="Add a comment..."></textarea>
+            <button class="modal-action-btn" on:click={addComment}>Add Comment</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modal Footer (Action Buttons) -->
+      <div class="modal-footer">
+        {#if taskState === 'In Progress'}
+          <button class="modal-action-btn takeon">Take On</button>
+          <button class="modal-action-btn approval">Request Approval</button>
+        {:else if taskState === 'Completed'}
+          <button class="modal-action-btn">Approve</button>
+        {/if}
+        <button class="modal-close-btn" on:click={closeModal}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
 
@@ -224,47 +437,132 @@ a.active {
 
   /* Modal Styling */
   .modal {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  overflow: hidden; /* Ensure that modal content can't overflow out of the view */
+}
 
-  .modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    max-width: 600px;
-    width: 100%;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    position: relative;
-  }
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 1000px;
+  height: 70vh; /* Ensure the modal doesn't go beyond 90% of the viewport height */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-y: auto; /* Ensure the entire modal content is scrollable if needed */
+}
 
-  .modal-header {
-    font-size: 1.5em;
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
+.modal-header {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-bottom: 20px;
+  background-color: #000000;
+  color: #fff;
+  text-align: center;
+}
 
-  .modal-body {
-    margin-bottom: 20px;
-  }
+.modal-body {
+  display: flex;
+  gap: 20px;
+  flex: 3; /* Allow the body to expand to fill the available space */
+  margin-bottom: 20px;
+}
 
-  .modal-close-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-  }
+.modal-right {
+  flex: 2;
+  width: 500px;
+}
+
+.modal-left {
+  display: grid;
+  grid-template-columns: 100px 1fr; /* Label column and content column */
+  gap: 5px; /* Spacing between rows */
+  align-items: left; /* Vertically center the items */
+}
+
+.details-row {
+  display: contents; /* Keep the items inline but let them respect the grid */
+}
+
+.details-row strong {
+  justify-self: start; /* Align labels to the left */
+}
+
+.details-row span, .details-row select {
+  justify-self: start; /* Align content to the left */
+  padding-left: 1px;
+}
+
+/* Updated Notes Section */
+.notes-section {
+  width: 90%;
+  height: 350px;
+  overflow-y: auto; /* Allow vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+}
+
+.notes-section p {
+  white-space: pre-line; /* This ensures newlines are respected in the string */
+}
+
+.comments-section {
+  margin-top: 20px;
+}
+
+.comments-section textarea {
+  width: 90%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  resize: none;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content:center
+}
+
+.modal-close-btn, .modal-action-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.modal-close-btn {
+  background-color: red;
+  color: white;
+}
+
+.modal-action-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.modal-action-btn.takeon {
+  background-color: #2196F3;
+}
+
+.modal-action-btn.approval {
+  background-color: #FF9800;
+}
 
   /* To handle responsiveness */
   @media (max-width: 768px) {
@@ -274,114 +572,3 @@ a.active {
     }
   }
 </style>
-
-<Layout bind:globalUsername>
-<span slot="NavContentLeft">Hello, {globalUsername}</span>
-  <div slot="NavContentCenter">
-    {#if isAdmin}
-      <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application'}>Application</a>
-      <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
-    {/if}
-  </div>
-  <div slot="NavContentRight" >Edit here</div>
-</Layout>
-
-<div class="container">
-  <div class="header">
-    <h1 class="head" >Task Management Board</h1>
-    <div class="middle"></div>
-    <div class="CreateApp">
-      <div class="CreateAppBtn" on:click={() => (showModal = true)} >+ Create Plan</div> 
-    </div>
-  </div>
-</div>
-
-<div class="kanban-board">
-  <!-- Backlog Column -->
-  <div class="kanban-column">
-    <h3>Backlog</h3>
-    {#each kanbanBoard.backlog as card (card.id)}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="kanban-card" on:click={() => openModal(card)}>
-        <div class="color-bar" style="background-color: {card.color};"></div>
-        <h4>{card.title}</h4>
-        <p>{card.description}</p>
-        <span class="owner-tag">{card.owner}</span>
-      </div>
-    {/each}
-  </div>
-
-  <!-- To Do Column -->
-  <div class="kanban-column">
-    <h3>To Do</h3>
-    {#each kanbanBoard.todo as card (card.id)}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="kanban-card" on:click={() => openModal(card)}>
-        <div class="color-bar" style="background-color: {card.color};"></div>
-        <h4>{card.title}</h4>
-        <p>{card.description}</p>
-        <span class="owner-tag">{card.owner}</span>
-      </div>
-    {/each}
-  </div>
-
-  <!-- Doing Column -->
-  <div class="kanban-column">
-    <h3>Doing</h3>
-    {#each kanbanBoard.doing as card (card.id)}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="kanban-card" on:click={() => openModal(card)}>
-        <div class="color-bar" style="background-color: {card.color};"></div>
-        <h4>{card.title}</h4>
-        <p>{card.description}</p>
-        <span class="owner-tag">{card.owner}</span>
-      </div>
-    {/each}
-  </div>
-
-  <!-- Review Column -->
-  <div class="kanban-column">
-    <h3>Review</h3>
-    {#each kanbanBoard.review as card (card.id)}
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="kanban-card" on:click={() => openModal(card)}>
-        <div class="color-bar" style="background-color: {card.color};"></div>
-        <h4>{card.title}</h4>
-        <p>{card.description}</p>
-        <span class="owner-tag">{card.owner}</span>
-      </div>
-    {/each}
-  </div>
-
-  <!-- Done Column -->
-  <div class="kanban-column">
-    <h3>Done</h3>
-    {#each kanbanBoard.done as card (card.id)}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="kanban-card" on:click={() => openModal(card)}>
-        <div class="color-bar" style="background-color: {card.color};"></div>
-        <h4>{card.title}</h4>
-        <p>{card.description}</p>
-        <span class="owner-tag">{card.owner}</span>
-      </div>
-    {/each}
-  </div>
-</div>
-
-<!-- Modal for displaying card details -->
-{#if showModal}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="modal" on:click={closeModal}>
-    <div class="modal-content" on:click|stopPropagation>
-      <button class="modal-close-btn" on:click={closeModal}>&times;</button>
-      <div class="modal-header">{selectedCard.title}</div>
-      <div class="modal-body">{selectedCard.description}</div>
-    </div>
-  </div>
-{/if}

@@ -17,6 +17,8 @@ router.get(
 
 router.post("/InsertApplications", tmsController.insertApplicationController);
 
+router.put('/updateApplication', tmsController.updateApplicationController);
+
 
 
 module.exports = router;

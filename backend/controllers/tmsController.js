@@ -36,7 +36,27 @@ const insertApplicationController = async (req, res) => {
 };
 
 
+const updateApplicationController = async (req, res) => {
+  try {
+    const appData = req.body; // Get the updated application data from the request body
+
+    // Call the service function to update the application
+    const result = await tmsService.updateApplication(appData);
+
+    // Check if the update was successful
+    if (result.affectedRows > 0) {
+      res.status(200).json({ message: 'Application updated successfully' });
+    } else {
+      res.status(404).json({ message: 'Application not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update application', error: error.message });
+  }
+};
+
+
 module.exports = {
   getAllApplicationByUsername,
   insertApplicationController,
+  updateApplicationController
 };

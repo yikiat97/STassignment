@@ -14,6 +14,10 @@
   let isAdmin = false;
   let globalUsername;
 
+  let originApp = null
+  let selectedApp = null;
+
+  let showEditModal = false;
   let showModal = false;
   let App_Acronym = '';
   let App_Rnumber = '';
@@ -150,6 +154,17 @@
       });    
   }
 
+  function openEditModal(app) {
+    app.App_startDate = convertIntToDate(app.App_startDate)
+    app.App_endDate = convertIntToDate(app.App_endDate)
+    selectedApp = { ...app };
+    originApp = app
+    showEditModal = true;
+    console.log(selectedApp.App_startDate)
+  }
+
+  
+
 //                 {
 //   "App_Acronym": "TMS3",
 //   "App_Rnumber": 1,
@@ -161,7 +176,71 @@
 //   "App_permit_Done": ["DEV_forTMS1", "PL_forTMS1"],
 //   "App_permit_create": ["PL_forTMS1"]
 // } 
+function submitEditedApp() {
+    const updatedApp = 
+    {
+      App_Acronym : selectedApp.App_Acronym,
+      App_Rnumber: selectedApp.App_Rnumber,
+      App_Description: null,
+      App_startDate: null,
+      App_endDate: null,
+      App_permit_Open: null,
+      App_permit_toDoList: null,
+      App_permit_Doing: null,
+      App_permit_Done: null,
+      App_permit_create: null
+    };
 
+    // Only include the fields that were modified
+    if (selectedApp.App_Description !== originApp.App_Description) {
+      updatedApp.App_Description = selectedApp.App_Description;
+    }
+    if (selectedApp.App_startDate !== originApp.App_startDate) {
+      updatedApp.App_startDate = selectedApp.App_startDate;
+    }
+    if (selectedApp.App_endDate !== originApp.App_endDate) {
+      updatedApp.App_endDate = selectedApp.App_endDate;
+    }
+    if (selectedApp.App_permit_create !== originApp.App_permit_create) {
+      updatedApp.App_permit_create = selectedApp.App_permit_create;
+    }
+    if (selectedApp.App_permit_Open !== originApp.App_permit_Open) {
+      updatedApp.App_permit_Open = selectedApp.App_permit_Open;
+    }
+    if (selectedApp.App_permit_toDoList !== originApp.App_permit_toDoList) {
+      updatedApp.App_permit_toDoList = selectedApp.App_permit_toDoList;
+    }
+    if (selectedApp.App_permit_Doing !== originApp.App_permit_Doing) {
+      updatedApp.App_permit_Doing = selectedApp.App_permit_Doing;
+    }
+    if (selectedApp.App_permit_Done !== originApp.App_permit_Done) {
+      updatedApp.App_permit_Done = selectedApp.App_permit_Done;
+    }
+    // Repeat for other fields (App_permit_Open, App_permit_toDoList, etc.)
+    console.log(updatedApp)
+
+
+
+    if (Object.keys(updatedApp).length > 0) {
+     updatedApp.App_Acronym = selectedApp.App_Acronym
+      // Send only updated fields to the backend
+      axios.put(ApiUrl + `/updateApplication`, updatedApp, {
+        withCredentials: true
+      })
+      .then(response => {
+        console.log("Application updated:", response.data);
+        getAllApplication(); // Refresh the app list
+
+        showEditModal = false; // Close the modal
+      })
+      .catch(error => {
+        console.error("Error updating application:", error);
+        handleError(error.response.data);
+      });
+    } else {
+      customAlert("No changes made");
+    }
+  }
 
 </script>
 
@@ -187,9 +266,12 @@
   </div>
   <div class="wrapper">
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 {#each AppList as app, appIndex}
 
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div class="card" on:click={goto(`/Home%20page/TMS/?App_Acronym=${app.App_Acronym}`) }>
+      
       <div class="left">
         <h1 class="title">App Name: </h1>
         <h1 class="title2" style="height: 100px; margin-bottom:100px" >App description: </h1>
@@ -203,6 +285,7 @@
         <p>{convertIntToDate(app.App_endDate)}</p>
       </div>
     </div>
+    <span class="edit-icon" on:click={() => openEditModal(app)}>🖉</span>
     
   {/each}
 
@@ -325,6 +408,119 @@
       
 </Modal>
 
+
+
+{#if showEditModal}
+  <Modal bind:showModal={showEditModal}>
+    <h2 slot="header">Edit Application</h2>
+
+    <div class="input-container">
+      <label for="App_Acronym" style="margin-bottom: 10px;">App_Acronym:</label>
+      <input type="text" id="App_Acronym" bind:value={selectedApp.App_Acronym} class="editable" disabled />
+    </div>
+
+    <div class="input-container">
+      <label for="App_Rnumber" style="margin-bottom: 10px; margin-right:31px">App_Rnumber:</label>
+      <input type="number" id="App_Rnumber" bind:value={selectedApp.App_Rnumber} class="editable" disabled />
+    </div>
+
+    <div class="input-container">
+      <label for="App_Description" style="margin-bottom: 10px;margin-right:8px">App_Description:</label>
+      <input type="text" id="App_Description" bind:value={selectedApp.App_Description} class="editable" />
+    </div>
+
+    <div class="input-container">
+      <label for="App_startDate" style="margin-bottom: 10px;">App_startDate:</label>
+      <input type="date" id="App_startDate" bind:value={selectedApp.App_startDate} class="editable" />
+    </div>
+
+    <div class="input-container">
+      <label for="App_endDate" style="margin-bottom: 10px;">App_endDate:</label>
+      <input type="date" id="App_endDate"  bind:value={selectedApp.App_endDate} class="editable" />
+    </div>
+
+    <div class="input-container">
+      <label for="App_permit_create" style="margin-bottom: 10px;">App_permit_create:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">  
+        <span class="tag">
+          {selectedApp.App_permit_create} 
+        </span>
+    </div>
+      <select bind:value={selectedApp.App_permit_create} class="editable">
+        <option value="" disabled>Select a group</option>
+        {#each distinctGroups as distinctGroup}
+          <option value={distinctGroup}>{distinctGroup}</option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="input-container">
+      <label for="App_permit_Open" style="margin-bottom: 10px;">App_permit_Open:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">  
+        <span class="tag">
+          {selectedApp.App_permit_Open} 
+        </span>
+    </div>
+      <select bind:value={selectedApp.App_permit_Open} class="editable">
+        <option value="" disabled>Select a group</option>
+        {#each distinctGroups as distinctGroup}
+          <option value={distinctGroup}>{distinctGroup}</option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="input-container">
+      <label for="Username" style="margin-bottom: 10px;">App_permit_toDoList:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">    
+          <span class="tag">
+            {selectedApp.App_permit_toDoList} 
+          </span>
+      </div>
+        <select bind:value={selectedApp.App_permit_toDoList}>
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
+  </div>
+
+  <div class="input-container">
+      <label for="Username" style="margin-bottom: 10px;">App_permit_Doing:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">
+          <span class="tag">
+            {selectedApp.App_permit_Doing} 
+          </span>
+      </div>
+        <select bind:value={selectedApp.App_permit_Doing}>
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
+  </div>
+
+  <div class="input-container">
+      <label for="Username" style="margin-bottom: 10px;">App_permit_Done:</label>
+      <div class="spanBox" style="max-height:100px; overflow: auto;">
+          <span class="tag">
+            { selectedApp.App_permit_Done} 
+          </span>
+      </div>
+        <select bind:value={selectedApp.App_permit_Done} >
+          <option value="" disabled>Select a group</option>
+          {#each distinctGroups as distinctGroup}
+            <option value={distinctGroup}>{distinctGroup}</option>
+          {/each}
+        </select>
+  </div>
+
+    <!-- Repeat the permit fields for toDoList, Doing, Done -->
+
+    <div slot="button">
+      <button class="modelCloseBtn" on:click={() => submitEditedApp()}>Save Changes</button>
+    </div>
+  </Modal>
+{/if}
 
 <style>
 
