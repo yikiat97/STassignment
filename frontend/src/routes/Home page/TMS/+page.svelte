@@ -55,7 +55,7 @@ let kanbanBoard = {
     ]
   };
 
-    // State to control modal visibility and the selected card
+  let PlanModal = false;
   let showModal = false;
   let selectedCard =  {
     taskID: '',
@@ -111,6 +111,17 @@ let kanbanBoard = {
     showModal = false;
     selectedCard = null;
   }
+
+  function openPlanModal(card) {
+    // selectedCard = card;
+    PlanModal = true;
+
+  }
+
+  function closePlanModal() {
+    PlanModal = false;
+   
+  }
   
 </script>
 
@@ -131,17 +142,18 @@ let kanbanBoard = {
       <h1 class="head" >Task Management Board</h1>
       <div class="middle"></div>
       <div class="CreateApp">
-        <div class="CreateAppBtn" on:click={() => (showModal = true)} >+ Create Plan</div> 
+        <div class="CreateAppBtn" on:click={() => openPlanModal()} >+ Create Plan</div> 
       </div>
     </div>
   </div>
   
+   <!---------------------------------- Display kanban-board ------------------------------------>
   <div class="kanban-board">
     <!-- Backlog Column -->
     <div class="kanban-column">
       <h3>Open</h3>
       {#each kanbanBoard.open as card (card.id)}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
@@ -156,7 +168,7 @@ let kanbanBoard = {
     <div class="kanban-column">
       <h3>To Do</h3>
       {#each kanbanBoard.todo as card (card.id)}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
@@ -171,7 +183,7 @@ let kanbanBoard = {
     <div class="kanban-column">
       <h3>Doing</h3>
       {#each kanbanBoard.doing as card (card.id)}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
@@ -186,7 +198,7 @@ let kanbanBoard = {
     <div class="kanban-column">
       <h3>Review</h3>
       {#each kanbanBoard.review as card (card.id)}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
@@ -213,6 +225,8 @@ let kanbanBoard = {
     </div>
   </div>
   
+
+  <!---------------------------------- Show task card modal ------------------------------------>
   {#if showModal}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -285,6 +299,26 @@ let kanbanBoard = {
     </div>
   </div>
 {/if}
+
+
+{#if PlanModal}
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div class="modal" on:click={closePlanModal}>
+  <div class="modal-content" on:click|stopPropagation>
+    <!-- Modal Header -->
+    <!-- <button class="modal-close-btn" on:click={closeModal}>&times;</button> -->
+    <div class="modal-header">data here</div>
+    
+    <!-- Modal Body -->
+    <div class="modal-body">
+      
+    </div>
+  </div>
+</div>
+{/if}
+
 
 <style>
 
