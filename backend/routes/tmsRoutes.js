@@ -9,16 +9,16 @@ const {
 const router = express.Router();
 
 // router.get("/verifyJWT", authenticateToken, userController.getResult);
-router.get(
-  "/getApplicationByUsername",
-  authenticateToken,
-  tmsController.getAllApplicationByUsername
-);
+router.get("/getApplicationByUsername", authenticateToken, tmsController.getAllApplicationByUsername);
+router.post("/InsertApplications", authenticateToken, tmsController.insertApplicationController);
+router.put('/updateApplication', authenticateToken, tmsController.updateApplicationController);
 
-router.post("/InsertApplications", tmsController.insertApplicationController);
+router.get( "/plans", authenticateToken, tmsController.getAllPlansByAppAcronymController);
+router.post("/insertPlan", authenticateToken, tmsController.insertPlanController);
+router.put("/editTaskPlan", tmsController.updateTaskPlanController);
 
-router.put('/updateApplication', tmsController.updateApplicationController);
-
-
+router.post("/insertTask", authenticateToken, tmsController.insertTaskController);
+router.get("/getAllTask", authenticateToken, tmsController.getKanbanBoardController);
+router.put("/updateTaskState", authenticateToken,  tmsController.updateTaskStateController);
 
 module.exports = router;

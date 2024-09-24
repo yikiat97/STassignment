@@ -60,7 +60,6 @@ SELECT DISTINCT usergroup FROM user_group
 
 
 
-
 -- Use the newly created database
 USE `nodelogin`;
 
@@ -88,7 +87,8 @@ CREATE TABLE IF NOT EXISTS `plan` (
   Plan_MVP_name VARCHAR(100) PRIMARY KEY NOT NULL,  -- Primary key
   Plan_app_Acronym VARCHAR(50) NOT NULL,            -- Foreign key to application
   Plan_startDate INT NOT NULL,                              -- Start date (use DATE instead of INT for date fields)
-  Plan_endDate INT NOT NULL,                                -- End date (use DATE)
+  Plan_endDate INT NOT NULL,
+  Plan_color varchar(7),                                -- End date (use DATE)
   FOREIGN KEY (Plan_app_Acronym) REFERENCES application(App_Acronym) 
     ON DELETE CASCADE                               -- If an application is deleted, delete the plan too
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS `plan` (
 
 
 CREATE TABLE IF NOT EXISTS `task` (
-  Task_id VARCHAR(55) PRIMARY KEY NOT NULL,        -- Primary key
+  Task_id VARCHAR(100) PRIMARY KEY NOT NULL,        -- Primary key
   Task_plan VARCHAR(100),                           -- Foreign key to Plan_MVP_name, can be NULL
   Task_app_Acronym VARCHAR(50) NOT NULL,            -- Foreign key to application
   Task_name VARCHAR(255) NOT NULL,                  -- Task name
@@ -137,10 +137,10 @@ VALUES ('TMS1_MVP1', 'TMS1', '20240101', '20240630');
 
 -- Insert a Task
 INSERT INTO `task` (Task_id, Task_plan, Task_app_Acronym, Task_name, Task_description, Task_notes, Task_state, Task_creator, Task_owner, Task_createDate)
-VALUES ('TMS1_2', 'TMS1_MVP1', 'TMS1', 'Implement Login', 'Implement user login feature', 'Handle validation and error messages', 'Open', 'PL_forTMS1', 'PM_forTMS1', '20240115');
+VALUES ('TMS1_1', 'TMS1_MVP1', 'TMS1', 'Implement Login', 'Implement user login feature', 'Handle validation and error messages', 'Open', 'PL_forTMS1', 'PM_forTMS1', '20240115');
 
 
-SELECT * from application
+SELECT * from task
 
 
 -- SELECT a.* FROM application a

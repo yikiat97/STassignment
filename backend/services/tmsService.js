@@ -232,8 +232,344 @@ const updateApplication = async (appData) => {
 };
 
 
+const getAllPlansByAppAcronym = async appAcronym => {
+  try {
+    // Query to fetch all plans by the App_Acronym
+    const [rows] = await db.query(
+      `SELECT * FROM plan WHERE Plan_app_Acronym = ?`,
+      [appAcronym]
+    );
+
+    if (rows.length === 0) {
+      throw new Error("No plans found for the given App_Acronym");
+    }
+
+    return rows; // Return the rows containing all plans for the specified App_Acronym
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
+const insertPlan = async planData => {
+  try {
+    let { planName, applicationName, startDate, endDate, color } = planData;
+
+    // Validate mandatory fields
+    if (!planName || !applicationName || !startDate || !endDate) {
+      throw new Error(
+        "Plan_MVP_name, Plan_app_Acronym, Plan_startDate, and Plan_endDate are mandatory fields"
+      );
+    }
+
+    startDate = convertDateToInt(startDate);
+    endDate = convertDateToInt(endDate);
+
+    // Check if the application exists for the given App_Acronym
+    const [applicationExists] = await db.query(
+      "SELECT * FROM application WHERE App_Acronym = ?",
+      [applicationName]
+    );
+
+    if (applicationExists.length === 0) {
+      throw new Error("Application does not exist for the given App_Acronym");
+    }
+
+    // Check if the Plan_MVP_name already exists
+    const [existingPlan] = await db.query(
+      "SELECT * FROM plan WHERE Plan_MVP_name = ?",
+      [planName]
+    );
+
+    if (existingPlan.length > 0) {
+      throw new Error("Plan_MVP_name already exists");
+    }
+
+    // Insert the new plan into the database
+    const query = `
+      INSERT INTO plan (Plan_MVP_name, Plan_app_Acronym, Plan_startDate, Plan_endDate, Plan_color)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      planName,
+      applicationName,
+      startDate,
+      endDate,
+      color || '#000000'
+    ]; // Plan_color is optional
+
+    const [result] = await db.query(query, values);
+
+    return result; // Return the result of the query
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+const updateTaskPlan = async (task_id, newTaskPlan) => {
+  try {
+    // Check if the task exists
+    const [task] = await db.query("SELECT * FROM task WHERE Task_id = ?", [
+      task_id
+    ]);
+
+    if (task.length === 0) {
+      throw new Error(`Task with ID '${task_id}' not found`);
+    }
+
+    // Update only the Task_plan
+    const [result] = await db.query(
+      "UPDATE task SET Task_plan = ? WHERE Task_id = ?",
+      [newTaskPlan, task_id]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("Failed to update task plan");
+    }
+
+    return {
+      message: `Task ${task_id} updated successfully with new plan: ${newTaskPlan}`
+    };
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
+const insertTaskWithGeneratedTaskID = async (
+  appAcronym,
+  taskData
+) => {
+  const connection = await db.getConnection();
+
+  try {
+    // Start the transaction
+    await connection.beginTransaction();
+
+    // Lock the application row to prevent race conditions
+    const [app] = await connection.query(
+      "SELECT App_Rnumber FROM application WHERE App_Acronym = ? FOR UPDATE",
+      [appAcronym]
+    );
+
+    if (app.length === 0) {
+      throw new Error("Application not found for the given App_Acronym");
+    }
+
+    // Get and increment the Rnumber
+    const currentRnumber = app[0].App_Rnumber;
+    const newRnumber = currentRnumber + 1;
+
+    // Update the App_Rnumber in the database
+    await connection.query(
+      "UPDATE application SET App_Rnumber = ? WHERE App_Acronym = ?",
+      [newRnumber, appAcronym]
+    );
+
+    // Generate the new Task ID (appAcronym + newRnumber)
+    const newTaskID = `${appAcronym}_${currentRnumber}`;
+
+    // Set defaults for required fields
+    const taskState = taskData.taskState;
+    const taskCreator = taskData.taskCreator; 
+    const taskOwner = taskData.taskOwner;
+    const taskCreateDate = convertDateToInt(taskData.taskCreateDate);
+     
+
+    // Insert the new task with the generated Task ID and other data
+    await connection.query(
+      `INSERT INTO task (
+        Task_id, 
+        Task_name, 
+        Task_description, 
+        Task_plan, 
+        Task_notes, 
+        Task_app_Acronym, 
+        Task_state, 
+        Task_creator, 
+        Task_owner, 
+        Task_createDate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newTaskID,
+        taskData.title,
+        taskData.description || "", // Optional
+        taskData.planName || null, // Optional
+        taskData.notes || null, // Optional
+        appAcronym,
+        taskState,
+        taskCreator,
+        taskOwner,
+        taskCreateDate
+      ]
+    );
+
+    // Commit the transaction
+    await connection.commit();
+
+    return { message: "Task created successfully", Task_id: newTaskID };
+  } catch (error) {
+    // Roll back the transaction in case of an error
+    await connection.rollback();
+    throw new Error(error.message);
+  } finally {
+    // Release the connection back to the pool
+    connection.release();
+  }
+};
+
+
+const getKanbanBoardByAppAcronym = async appAcronym => {
+  try {
+    // Query to get tasks with associated plan and application information
+    const [tasks] = await db.query(
+      `SELECT 
+          t.Task_id AS taskID,
+          t.Task_name AS title,
+          t.Task_description AS description,
+          t.Task_state AS taskState,
+          t.Task_owner AS taskOwner,
+          t.Task_creator AS taskCreator,
+          t.Task_createDate AS taskCreateDate,
+          t.Task_notes AS notes,
+          p.Plan_MVP_name AS planName,
+          p.Plan_color AS color
+        FROM task t
+        LEFT JOIN plan p ON t.Task_plan = p.Plan_MVP_name
+        WHERE t.Task_app_Acronym = ?`,
+      [appAcronym]
+    );
+
+    // Create the Kanban board structure
+    let kanbanBoard = {
+      open: [],
+      todo: [],
+      doing: [],
+      done: [],
+      closed: []
+    };
+
+    // Populate the Kanban board based on task state
+    tasks.forEach(task => {
+      const taskObj = {
+        taskID: task.taskID,
+        title: task.title,
+        description: task.description || "",
+        color: task.color || "#FFFFFF", // Default color if none exists
+        taskOwner: task.taskOwner,
+        planName: task.planName || "",
+        taskState: task.taskState,
+        taskCreator: task.taskCreator,
+        taskCreateDate: convertIntToDate(task.taskCreateDate),
+        notes: task.notes || ""
+      };
+
+      // Categorize task based on its state
+      switch (task.taskState.toLowerCase()) {
+        case "open":
+          kanbanBoard.open.push(taskObj);
+          break;
+        case "todo":
+          kanbanBoard.todo.push(taskObj);
+          break;
+        case "doing":
+          kanbanBoard.doing.push(taskObj);
+          break;
+        case "done":
+          kanbanBoard.done.push(taskObj);
+          break;
+        case "closed":
+          kanbanBoard.closed.push(taskObj);
+          break;
+        default:
+          break;
+      }
+    });
+    console.log(kanbanBoard);
+
+    return kanbanBoard;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
+const stateTransitions = {
+  open: ["todo"], // open can only move to todo
+  todo: ["doing"], // todo can only move to doing
+  doing: ["todo", "done"], // doing can move to done or back to todo
+  done: ["doing", "closed"], // done can move to closing or back to doing
+  closed: [] // closing is the final state, no transitions
+};
+
+const updateTaskState = async (task_id, newState) => {
+  const connection = await db.getConnection();
+
+  try {
+    // Start the transaction
+    await connection.beginTransaction();
+
+    // Fetch the current state of the task with a lock to prevent race conditions
+    const [task] = await connection.query(
+      "SELECT Task_state FROM task WHERE Task_id = ? FOR UPDATE",
+      [task_id]
+    );
+
+    if (task.length === 0) {
+      throw new Error(`Task with ID '${task_id}' not found`);
+    }
+
+    const currentState = task[0].Task_state;
+
+    // Validate if the transition is allowed
+    const allowedTransitions = stateTransitions[currentState];
+    if (!allowedTransitions.includes(newState)) {
+      throw new Error(
+        `Invalid state transition: Cannot move from '${currentState}' to '${newState}'`
+      );
+    }
+
+    // Update the task's state
+    const [result] = await connection.query(
+      "UPDATE task SET Task_state = ? WHERE Task_id = ?",
+      [newState, task_id]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("Failed to update task state");
+    }
+
+    // Commit the transaction
+    await connection.commit();
+
+    return {
+      message: `Task ${task_id} state updated from '${currentState}' to '${newState}'`
+    };
+  } catch (error) {
+    // Roll back the transaction in case of an error
+    await connection.rollback();
+    throw new Error(error.message);
+  } finally {
+    // Release the connection back to the pool
+    connection.release();
+  }
+};
+
+
+
 module.exports = {
   getAllApplicationByUsername,
   insertApplication,
-  updateApplication
+  updateApplication,
+  getAllPlansByAppAcronym,
+  insertPlan,
+  updateTaskPlan,
+  insertTaskWithGeneratedTaskID,
+  getKanbanBoardByAppAcronym,
+  updateTaskState
 };

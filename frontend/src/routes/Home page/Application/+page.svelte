@@ -8,6 +8,8 @@
   import { handleError, customError, customAlert} from '../../../lib/errorHandler';
   const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
   import Modal from '../../../lib/AddGroupModel.svelte'
+  import TMSPage from '../TMS/TMSPage.svelte' 
+ 
 
   let App_Name_URL;
 
@@ -35,7 +37,7 @@
   let newApp = {
     App_Acronym: null,
     App_Rnumber: null,
-    App_Description: null,
+    App_Description: '',
     App_startDate: null,
     App_endDate: null,
     App_permit_create: null,
@@ -74,8 +76,6 @@
   }
 
   onMount(async () => {
-
-    
     try {
         const response = await axios.get(ApiUrl + '/Application   ', {
         withCredentials: true  
@@ -134,7 +134,7 @@
         newApp = {
             App_Acronym: null,
             App_Rnumber: null,
-            App_Description: null,
+            App_Description: '',
             App_startDate: null,
             App_endDate: null,
             App_permit_create: null,
@@ -181,7 +181,7 @@ function submitEditedApp() {
     {
       App_Acronym : selectedApp.App_Acronym,
       App_Rnumber: selectedApp.App_Rnumber,
-      App_Description: null,
+      App_Description: '',
       App_startDate: null,
       App_endDate: null,
       App_permit_Open: null,
@@ -242,6 +242,17 @@ function submitEditedApp() {
     }
   }
 
+  function refresh() {
+    window.location.reload();  
+  }
+
+  export let Global_App_Acronym = ''
+  let showTMSPage = false; // This will control the visibility of TMSPage
+  function openTMSpage(App_Acronym){
+    showTMSPage = true; 
+    Global_App_Acronym = App_Acronym
+  }
+
 </script>
 
 
@@ -249,12 +260,19 @@ function submitEditedApp() {
 <span slot="NavContentLeft">Hello, {globalUsername}</span>
   <div slot="NavContentCenter">
     {#if isAdmin}
-      <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application'}>Application</a>
+      <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application' && !showTMSPage} on:click={refresh}>Application</a>
+      {#if showTMSPage}
+       <a href="" class:active={showTMSPage} on:click={openTMSpage(Global_App_Acronym)}>Task</a>
+      {/if}
       <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
     {/if}
   </div>
   <div slot="NavContentRight" >Edit here</div>
 </Layout>
+
+{#if showTMSPage}
+  <TMSPage {Global_App_Acronym} />
+{/if}
 
 <div class="container">
   <div class="header">
@@ -270,8 +288,8 @@ function submitEditedApp() {
 {#each AppList as app, appIndex}
 
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="card" on:click={goto(`/Home%20page/TMS/?App_Acronym=${app.App_Acronym}`) }>
-      
+    <!-- on:click={goto(`/Home%20page/TMS/?App_Acronym=${app.App_Acronym}`) } -->
+    <div class="card" on:click={openTMSpage(app.App_Acronym)} >   
       <div class="left">
         <h1 class="title">App Name: </h1>
         <h1 class="title2" style="height: 100px; margin-bottom:100px" >App description: </h1>
@@ -665,7 +683,7 @@ input, select {
 
 .card {
   box-sizing: border-box;
-  width: 500px; /* Set width to accommodate both left and right sections */
+  width: 430px; /* Set width to accommodate both left and right sections */
   padding: 20px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   border-radius: 20px;
