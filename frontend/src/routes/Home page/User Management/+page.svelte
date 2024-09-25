@@ -654,7 +654,6 @@ input, select {
 .modelCloseBtn{
   cursor: pointer;
   padding: 5px 10px;
-  margin-top: 20px;
   border: none;
   color: white;
   background-color: black;

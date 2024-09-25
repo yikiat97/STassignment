@@ -12,8 +12,10 @@
  
 
   let App_Name_URL;
+  let yourPermits = [];
 
   let isAdmin = false;
+  let isHardcodedPL = false
   let globalUsername;
 
   let originApp = null
@@ -75,6 +77,25 @@
       }
   }
 
+
+  const getUserPermits = async() => {
+        try{
+        const UserPermits = await axios.post(ApiUrl + '/getUserPermits', {username: globalUsername}, {
+          withCredentials: true  
+        });
+        console.log(UserPermits.data.permissions[0].permissions)
+        yourPermits = UserPermits.data.permissions[0].permissions
+        
+        if (yourPermits.includes('PL')){
+        isHardcodedPL = true
+        }
+
+      } catch (error) {
+        console.error('error:', error.response.data.message);
+        handleError(error.response.data);
+      }
+  }
+
   onMount(async () => {
     try {
         const response = await axios.get(ApiUrl + '/Application   ', {
@@ -89,8 +110,11 @@
         if (response.data.result.includes("admin") ){
             isAdmin = true      
         }
+
+
         getAllApplication()
         getAllGroups()
+        getUserPermits()
 
     } catch (error) {
         goto('/login');
@@ -126,6 +150,12 @@
   }
 
   function submitNewApp(){
+    console.log(newApp.App_Rnumber)
+    if (newApp.App_Rnumber <= 0){
+      customAlert("App_Rnumber must be integer & more than 0")
+      return
+    }
+    
     console.log("submitNewApp variable:",newApp)
       const response =  axios.post(ApiUrl + '/InsertApplications', newApp, {
         withCredentials: true  
@@ -249,7 +279,7 @@ function submitEditedApp() {
   export let Global_App_Acronym = ''
   let showTMSPage = false; // This will control the visibility of TMSPage
   function openTMSpage(App_Acronym){
-    showTMSPage = true; 
+    showTMSPage = !showTMSPage; 
     Global_App_Acronym = App_Acronym
   }
 
@@ -259,11 +289,12 @@ function submitEditedApp() {
 <Layout bind:globalUsername>
 <span slot="NavContentLeft">Hello, {globalUsername}</span>
   <div slot="NavContentCenter">
-    {#if isAdmin}
-      <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application' && !showTMSPage} on:click={refresh}>Application</a>
-      {#if showTMSPage}
+    
+      <a href="/Home page/Application" class:active={$page.url.pathname === '/Home%20page/Application' && !showTMSPage} on:click={openTMSpage(Global_App_Acronym)}>Application</a>
+      {#if Global_App_Acronym != ''}
        <a href="" class:active={showTMSPage} on:click={openTMSpage(Global_App_Acronym)}>Task</a>
       {/if}
+    {#if isAdmin}
       <a href="/Home page/User Management" class:active={$page.url.pathname === '/Home%20page/User%20Management'}>User Management</a>
     {/if}
   </div>
@@ -272,14 +303,19 @@ function submitEditedApp() {
 
 {#if showTMSPage}
   <TMSPage {Global_App_Acronym} />
-{/if}
+  
+{:else}
+
 
 <div class="container">
   <div class="header">
     <h1 class="head" >Application</h1>
     <div class="middle"></div>
     <div class="CreateApp">
-      <div class="CreateAppBtn" on:click={() => (showModal = true)} >+ Create App</div> 
+      {#if isHardcodedPL }
+        <div class="CreateAppBtn" on:click={() => (showModal = true)} >+ Create App</div>
+      {/if}
+       
     </div>
   </div>
   <div class="wrapper">
@@ -303,7 +339,10 @@ function submitEditedApp() {
         <p>{convertIntToDate(app.App_endDate)}</p>
       </div>
     </div>
-    <span class="edit-icon" on:click={() => openEditModal(app)}>🖉</span>
+    {#if yourPermits.includes('PL')}
+      <span class="edit-icon" on:click={() => openEditModal(app)}>🖉</span>
+    {/if}
+   
     
   {/each}
 
@@ -540,6 +579,11 @@ function submitEditedApp() {
   </Modal>
 {/if}
 
+
+{/if}
+
+
+
 <style>
 
 .container{
@@ -562,7 +606,7 @@ a.active {
 }
 
 .container {
-  margin-top: 45px;
+  margin-top: 25px;
   align-items: stretch;
   justify-content: center;
   margin-left: auto;
@@ -613,9 +657,10 @@ a.active {
 }
 
 input, select {
-  margin-bottom: 20px;
+  /* margin-bottom: 20px; */
   padding: 10px;
-  width: 50px;
+  /* width: 50px; */
+  width: 100%;
   box-sizing: border-box;
   border: none;
   outline: none;
@@ -664,7 +709,6 @@ input, select {
 .modelCloseBtn{
   cursor: pointer;
   padding: 5px 10px;
-  margin-top: 20px;
   border: none;
   color: white;
   background-color: black;

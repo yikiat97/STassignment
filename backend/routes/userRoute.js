@@ -14,6 +14,7 @@ router.get("/allGroup", authenticateToken, userController.getAllGroup);
 router.post("/addNewGroup",verifyTokenWithIPAndBrowser("admin"),userController.insertNewGroup);
 router.put("/updateUser", verifyTokenWithIPAndBrowser('admin'), userController.updateUserController);
 router.post('/login', userController.login);
+router.post("/logout", userController.logout);
 router.post('/register', verifyTokenWithIPAndBrowser('admin'), userController.register);
 router.put(
   "/updateProfile",

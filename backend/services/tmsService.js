@@ -67,6 +67,7 @@ const insertApplication = async appData => {
       App_permit_create
     } = appData;
 
+
     // Validate mandatory fields
     if (!App_Acronym || !App_Rnumber || !App_startDate || !App_endDate) {
       throw new Error(
@@ -562,6 +563,162 @@ const updateTaskState = async (task_id, newState) => {
 
 
 
+const updateTask = async (taskData) => {
+  const connection = await db.getConnection();
+
+  const { taskState, taskCreator, taskOwner, taskCreateDate } = taskData;
+  if (!taskState || !taskCreator || !taskOwner || !taskCreateDate) {
+    return res.status(400).json({
+      message:
+        "Task_state, Task_creator, Task_owner, and Task_createDate are required fields"
+    });
+  }
+
+  try {
+    // Start the transaction to prevent race conditions
+    await connection.beginTransaction();
+
+    // Extract mandatory and optional fields from taskData
+    let {
+      taskID,
+      planName,
+      title,
+      description,
+      notes,
+      taskState,
+      taskCreator,
+      taskOwner,
+      taskCreateDate
+    } = taskData;
+
+    taskCreateDate = convertDateToInt(taskCreateDate);
+
+    // Build the SQL query dynamically
+    let query = `UPDATE task SET Task_state = ?, Task_creator = ?, Task_owner = ?, Task_createDate = ?`;
+    const values = [taskState, taskCreator, taskOwner, taskCreateDate];
+
+    // Append optional fields only if provided
+    if (planName) {
+      query += `, Task_plan = ?`;
+      values.push(planName);
+    }
+    if (title) {
+      query += `, Task_name = ?`;
+      values.push(title);
+    }
+    if (description) {
+      query += `, Task_description = ?`;
+      values.push(description);
+    }
+    if (notes) {
+      query += `, Task_notes = ?`;
+      values.push(notes);
+    }
+
+    // Complete the SQL query
+    query += ` WHERE Task_id = ?`;
+    values.push(taskID);
+
+    // Execute the update query
+    const [result] = await connection.query(query, values);
+
+    // Commit the transaction
+    await connection.commit();
+
+    if (result.affectedRows === 0) {
+      throw new Error(`No task found with Task_id: ${taskID}`);
+    }
+
+    return { message: "Task updated successfully" };
+  } catch (error) {
+    // Rollback the transaction in case of an error
+    await connection.rollback();
+    throw new Error(`Failed to update task: ${error.message}`);
+  } finally {
+    // Release the connection
+    connection.release();
+  }
+};
+
+
+
+const getUserPermits = async username => {
+  try {
+    // Get the user's groups from the user_group table
+    const [userGroups] = await db.query(
+      `
+      SELECT usergroup 
+      FROM user_group 
+      WHERE username = ?
+    `,
+      [username]
+    );
+
+    if (userGroups.length === 0) {
+      throw new Error("User has no assigned groups");
+    }
+
+    // Extract the user groups
+    const groups = userGroups.map(group => group.usergroup);
+
+    // Check if the user belongs to any permit in the application table
+    const [applications] = await db.query(
+      `
+      SELECT 
+        App_Acronym,
+        App_permit_Open, 
+        App_permit_toDoList, 
+        App_permit_Doing, 
+        App_permit_Done, 
+        App_permit_create
+      FROM application
+      WHERE App_permit_Open IN (?) 
+        OR App_permit_toDoList IN (?)
+        OR App_permit_Doing IN (?)
+        OR App_permit_Done IN (?)
+        OR App_permit_create IN (?)
+    `,
+      [groups, groups, groups, groups, groups]
+    );
+
+    // Build the permission list for each application
+    const userPermissions = applications.map(app => {
+      const permissions = [];
+      if (groups.includes(app.App_permit_Open)) {
+        permissions.push("open");
+      }
+      if (groups.includes(app.App_permit_toDoList)) {
+        permissions.push("todo");
+      }
+      if (groups.includes(app.App_permit_Doing)) {
+        permissions.push("doing");
+      }
+      if (groups.includes(app.App_permit_Done)) {
+        permissions.push("done");
+      }
+      if (groups.includes(app.App_permit_create)) {
+        permissions.push("create");
+      }
+      if (groups.includes("PL")) {
+        permissions.push("PL");
+      }
+      if (groups.includes("PM")) {
+        permissions.push("PM");
+      }
+      return {
+        App_Acronym: app.App_Acronym,
+        permissions
+      };
+    });
+
+    return userPermissions;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
 module.exports = {
   getAllApplicationByUsername,
   insertApplication,
@@ -571,5 +728,7 @@ module.exports = {
   updateTaskPlan,
   insertTaskWithGeneratedTaskID,
   getKanbanBoardByAppAcronym,
-  updateTaskState
+  updateTaskState,
+  updateTask,
+  getUserPermits
 };

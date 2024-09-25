@@ -72,7 +72,6 @@ onMount(async () => {
   .catch(error => {
     console.error("Error:", error);
     handleError(error.response.data);
-    /////////////////////////////////////////////////// rmb change Forbidden: You do not have access to this resource 
   });
   }
 
@@ -83,6 +82,22 @@ function openModel(){
 }
 
 
+  function logOut() {
+    const response =  axios.post(ApiUrl + '/logout', {
+      withCredentials: true  
+      }).then(response => {
+        console.log(response)
+        goto("/login")
+      customAlert("Log Out!")
+
+    })
+    .catch(error => {
+      console.error("Error:", error);
+      handleError(error.response.data);
+    });
+  }
+
+
 </script>
 
  <main>
@@ -90,6 +105,7 @@ function openModel(){
     <div class="NavContentLeft"><slot name="NavContentLeft" /></div>
     <div class="NavContentCenter"><slot name="NavContentCenter" /></div>
     <div class="NavContentRight"  on:click={() => openModel()}><slot name="NavContentRight" /></div>
+    <button class="SignOutBtn" on:click={logOut}>sign out</button>
   </nav>
 
   <!-- Default slot for the main content -->
@@ -146,7 +162,7 @@ function openModel(){
 .NavContentRight {
     flex: 1; /* Make it flexible */
     text-align: right; /* Align the content to the right */
-    padding-right: 150px;
+    padding-right: 50px;
 }
 
 input {
@@ -179,12 +195,20 @@ input {
 .modelCloseBtn{
   cursor: pointer;
   padding: 5px 10px;
-  margin-top: 20px;
   border: none;
   color: white;
   background-color: black;
   width: 150px;
   height: 35px;
+}
+
+
+.SignOutBtn{
+ background-color: black;
+ color: aliceblue;
+ width: 100px;
+ height: 50px;
+ margin-right: 10px;
 }
 
 </style>

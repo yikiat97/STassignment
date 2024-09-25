@@ -174,6 +174,42 @@ const updateTaskStateController = async (req, res) => {
 
 
 
+const updateTask = async (req, res) => {
+  const taskData = req.body;
+
+  try {
+
+    // Call the updateTask service to handle the update
+    const result = await tmsService.updateTask(taskData);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const getUserPermitsController = async (req, res) => {
+  const { username } = req.body;
+
+  try {
+    const userPermissions = await tmsService.getUserPermits(username);
+
+    if (userPermissions.length === 0) {
+      return res.status(404).json({ message: "No permissions found for user" });
+    }
+
+    res.status(200).json({
+      message: "Permissions retrieved successfully",
+      permissions: userPermissions
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
 module.exports = {
   getAllApplicationByUsername,
   insertApplicationController,
@@ -183,5 +219,7 @@ module.exports = {
   updateTaskPlanController,
   insertTaskController,
   getKanbanBoardController,
-  updateTaskStateController
+  updateTaskStateController,
+  updateTask,
+  getUserPermitsController
 };

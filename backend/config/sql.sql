@@ -131,13 +131,6 @@ VALUES
 ('TMS3', 'Task Management System1', 1, '20240101', '20241231', 'admin', 'DEV_forTMS1', 'DEV_forTMS1', 'PL_forTMS1', 'PL_forTMS1');
 
 
--- Insert a Plan
-INSERT INTO `plan` (Plan_MVP_name, Plan_app_Acronym, Plan_startDate, Plan_endDate)
-VALUES ('TMS1_MVP1', 'TMS1', '20240101', '20240630');
-
--- Insert a Task
-INSERT INTO `task` (Task_id, Task_plan, Task_app_Acronym, Task_name, Task_description, Task_notes, Task_state, Task_creator, Task_owner, Task_createDate)
-VALUES ('TMS1_1', 'TMS1_MVP1', 'TMS1', 'Implement Login', 'Implement user login feature', 'Handle validation and error messages', 'Open', 'PL_forTMS1', 'PM_forTMS1', '20240115');
 
 
 SELECT * from task

@@ -20,5 +20,7 @@ router.put("/editTaskPlan", tmsController.updateTaskPlanController);
 router.post("/insertTask", authenticateToken, tmsController.insertTaskController);
 router.get("/getAllTask", authenticateToken, tmsController.getKanbanBoardController);
 router.put("/updateTaskState", authenticateToken,  tmsController.updateTaskStateController);
+router.put("/UpdateTask", authenticateToken, tmsController.updateTask);
+router.post("/getUserPermits", authenticateToken, tmsController.getUserPermitsController);
 
 module.exports = router;

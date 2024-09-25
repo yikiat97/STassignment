@@ -1,26 +1,5 @@
 <script>
-    import { onMount } from 'svelte';
-    import { goto } from '$app/navigation';
-    import axios from 'axios';
-    import { userStore } from '../../../lib/stores';
-    import Layout from '../../layout.svelte';
-    import { page } from '$app/stores';
-    import { handleError, customError, customAlert} from '../../../lib/errorHandler';
-    const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
-    import Modal from '../../../lib/AddGroupModel.svelte'
-
-    let isAdmin = false;
-    let globalUsername;
-    let App_Name_URL;
-    export let Global_App_Acronym = ''
-    let kanbanBoard = {
-      open: [],
-      todo: [],
-      doing: [],
-      done: [],
-      closed: []
-    };
-  //   let kanbanBoard = {
+    //   let kanbanBoard = {
   //   open: [
   //     { taskID: 1, title: 'Task 1', description: 'Backlog Task', color: '#FF6F61', taskOwner: 'John limmmm', planName:'',taskState:'', taskCreator:'',taskCreateDate:'', notes:''},
   //     { taskID: 2, title: 'Task 2', description: 'Backlog Task', color: '#FF6F61', taskOwner: 'Jane', planName:'',taskState:'', taskCreator:'',taskCreateDate:'', notes:'' },
@@ -38,6 +17,29 @@
   //     { taskID: 6, title: 'Task 6', description: 'Done Task', color: '#2ECC71', taskOwner: 'Emily', planName:'',taskState:'', taskCreator:'',taskCreateDate:'', notes:'' },
   //   ]
   // };
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
+    import axios from 'axios';
+    import { userStore } from '../../../lib/stores';
+    import Layout from '../../layout.svelte';
+    import { page } from '$app/stores';
+    import { handleError, customError, customAlert} from '../../../lib/errorHandler';
+    import { toast, Toaster } from 'svelte-sonner';
+    const ApiUrl = import.meta.env.VITE_API_URL+':'+import.meta.env.VITE_PORT+'/api';
+    import Modal from '../../../lib/AddGroupModel.svelte'
+
+    let isAdmin = false;
+    let globalUsername;
+    let App_Name_URL;
+    export let Global_App_Acronym = ''
+    let kanbanBoard = {
+      open: [],
+      todo: [],
+      doing: [],
+      done: [],
+      closed: []
+    };
+    let yourPermits = [];
 
 
     const getAllTask = async() => {
@@ -46,13 +48,30 @@
           withCredentials: true  
           });
         kanbanBoard = tasksListWithCategory.data
-        console.log(kanbanBoard)
+        // console.log(kanbanBoard)
 
       } catch (error) {
         console.error('error:', error.response.data.message);
         handleError(error.response.data);
       }
   }
+
+
+  const getUserPermits = async() => {
+        try{
+        const UserPermits = await axios.post(ApiUrl + '/getUserPermits', {username: globalUsername}, {
+          withCredentials: true  
+          });
+          yourPermits = UserPermits.data.permissions[0].permissions
+         console.log(UserPermits.data.permissions[0].permissions)
+        // console.log(kanbanBoard)
+
+      } catch (error) {
+        console.error('error:', error.response.data.message);
+        handleError(error.response.data);
+      }
+  }
+
 
     onMount(async () => {
         App_Name_URL = Global_App_Acronym
@@ -61,7 +80,7 @@
         const response = await axios.get(ApiUrl + '/Application   ', {
         withCredentials: true  
         });
-        console.log(response)
+        // console.log(response)
         if (response.data == "Forbidden: You do not have access to this resource"){
             goto('/login');
         }
@@ -71,7 +90,7 @@
             isAdmin = true      
         }
         getAllTask()
-
+        getUserPermits()
     } catch (error) {
         console.error('Access denied:', error.response.data.message);
         handleError(error.response.data);
@@ -108,7 +127,7 @@
       const response =  axios.get(ApiUrl + '/plans?appAcronym='+ App_Name_URL, {
       withCredentials: true  
       }).then(response => {
-      console.log("getPlan Status:", response);  // Logs the status, e.g., 200
+     // console.log("getPlan Status:", response);  // Logs the status, e.g., 200
       planList = response.data
   
       })
@@ -119,21 +138,7 @@
   }
 
 
-  function editPlan(id, planName){
-      const response =  axios.put(ApiUrl + '/editTaskPlan', {task_id: id, newTaskPlan:planName }, {
-      withCredentials: true  
-      }).then(response => {
-      console.log("getPlan Status:", response);  // Logs the status, e.g., 200
-      planList = response.data
-  
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        handleError(error.response.data);
-      });    
-  }
-
-
+////////////////////////////////////// Creation of Plan and Task ////////////////////////////////// 
   function submitNewPlan(){
     console.log("submitNewPlan variable:",InsertplanList)
     if ( !InsertplanList.planName || !InsertplanList.startDate || !InsertplanList.endDate ) {
@@ -143,7 +148,7 @@
     const response =  axios.post(ApiUrl + '/insertPlan', InsertplanList, {
       withCredentials: true  
       }).then(response => {
-      console.log("Status:", response.status);  // Logs the status, e.g., 200
+     // console.log("Status:", response.status);  // Logs the status, e.g., 200
       InsertplanList = {
           planName: null,
           applicationName: App_Name_URL,
@@ -162,11 +167,12 @@
 
     function submitNewTask(){
       selectedCard.taskState = 'open'
-      console.log('Submit Task var: ',selectedCard)
+      addComment()
+      //console.log('Submit Task var: ',selectedCard)
       const response =  axios.post(ApiUrl + '/insertTask', selectedCard, {
       withCredentials: true  
       }).then(response => {
-      console.log("Status:", response.status);  // Logs the status, e.g., 200
+     // console.log("Status:", response.status);  // Logs the status, e.g., 200
       selectedCard =  {
         taskID: null,
         title: null,
@@ -183,23 +189,100 @@
       customAlert("New Task Added")
       })
       .catch(error => {
+      selectedCard.taskState = 'create'
         console.error("Error:", error);
         handleError(error.response.data);
       });    
     }
-    
+////////////////////////////////////// End Creation of Plan and Task //////////////////////////////////
+
+
 
   let comment = '';
   let newNotes = selectedCard.notes; // To hold notes dynamically
   function addComment() {
-  if (comment.trim()) {
-    selectedCard.notes += `\n \n Date:${getDateNow()} \n Commented By: ${globalUsername}`
-    selectedCard.notes += `\n${comment}`;
-    comment = '';
+    if (comment.trim()) {
+      selectedCard.notes += `\n \n Date:${getDateNow()} \n Commented By: ${globalUsername}`
+      selectedCard.notes += `\n${comment}`;
+      comment = '';
+    }
   }
-}
 
-  // Function to handle card click
+
+  function editPlan(id, planName){
+      const response =  axios.put(ApiUrl + '/editTaskPlan', {task_id: id, newTaskPlan:planName }, {
+      withCredentials: true  
+      }).then(response => {
+     // console.log("editPlan Status:", response);  // Logs the status, e.g., 200
+      // planList = response.data
+      customAlert("Plan Updated")
+  
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        handleError(error.response.data);
+      });    
+  }
+
+
+  async function saveChanges() {
+    try {
+      await addComment(); // Wait for addComment to complete
+      //await editPlan(id, planName); // Wait for editPlan to complete
+      console.log(selectedCard) 
+      selectedCard.taskOwner = globalUsername
+      const response =  await axios.put(ApiUrl + '/UpdateTask', selectedCard, {
+        withCredentials: true  
+        }).then(response => {
+      // console.log("Status:", response.status);  // Logs the status, e.g., 200
+        selectedCard =  {
+          taskID: null,
+          title: null,
+          description: null,
+          planName: null,
+          taskState: null,
+          taskCreator: null,
+          taskOwner: null,
+          taskCreateDate: null,
+          notes: null
+        };
+        showModal = false;
+        getAllTask()
+        customAlert("Task Updated")
+        })
+        .catch(error => {
+      
+          console.error("Error:", error);
+          handleError(error.response.data);
+        });    
+
+      console.log(selectedCard); // Log the updated card after changes are saved
+    } catch (error) {
+      console.error('Error saving changes:', error); // Handle any errors
+    }
+  }
+
+
+  async function updateTask(taskID, state){
+    await saveChanges()
+    const response =  await axios.put(ApiUrl + '/updateTaskState', {task_id: taskID, newState:state }, {
+      withCredentials: true  
+      }).then(response => {
+      console.log("getPlan Status:", response);  
+
+      getAllTask()
+      closeModal()
+      // planList = response.data
+  
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        handleError(error.response.data);
+      });    
+  }
+    
+
+//////////////////////////////////////// Modal functionalities /////////////////////////////////////
   function openModal(card) {
     // selectedCard = card;
     showModal = true;
@@ -229,6 +312,7 @@
     showModal = false;
     isEditable = false
     selectedCard = null;
+    getAllTask()
   }
 
   function openPlanModal(card) {
@@ -240,6 +324,8 @@
   function closePlanModal() {
     PlanModal = false;
   }
+  ////////////////////////////////////// End Model functionalities  //////////////////////////////////
+
 
   function getDateNow(){
     const today = new Date();
@@ -250,22 +336,15 @@
     return formattedDate
   }
 
-
-  function updateTask(taskID, state){
-    const response =  axios.put(ApiUrl + '/updateTaskState', {task_id: taskID, newState:state }, {
-      withCredentials: true  
-      }).then(response => {
-      console.log("getPlan Status:", response);  
-      getAllTask()
-      closeModal()
-      // planList = response.data
-  
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        handleError(error.response.data);
-      });    
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault(); // Prevent default "Enter" behavior
+      addComment(); // Call the function to add the comment
+    }
   }
+
+
+
 
 
 
@@ -286,16 +365,22 @@
   
   <div class="container">
     <div class="header">
-      <h1 class="head" >Task Management Board</h1>
+      <h2 class="head" >Task Management Board: {Global_App_Acronym}</h2>
       <div class="middle"></div>
       <div class="CreateApp">
-        <div class="CreateAppBtn" on:click={() => openCreateTaskModal()} >+ Create Task</div> 
-        <div class="CreateAppBtn" style="margin-left: 20px;" on:click={() => openPlanModal()} >+ Create Plan</div> 
+        {#if yourPermits.includes('create')}
+          <div class="CreateAppBtn" on:click={() => openCreateTaskModal()} >+ Create Task</div> 
+        {/if}
+       {#if yourPermits.includes('PM') }
+          <div class="CreateAppBtn" style="margin-left: 20px;" on:click={() => openPlanModal()} >+ Create Plan</div> 
+       {/if}
+       
         
       </div>
     </div>
   </div>
   
+
    <!---------------------------------- Display kanban-board ------------------------------------>
   <div class="kanban-board">
     <!-- Backlog Column -->
@@ -306,8 +391,8 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
-          <h4>{card.title}</h4>
-          <p>{card.description}</p>
+          <h4>{card.taskID}</h4>
+          <p>{card.title}</p>
           <span class="owner-tag">{card.taskOwner}</span>
         </div>
       {/each}
@@ -321,8 +406,8 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
-          <h4>{card.title}</h4>
-          <p>{card.description}</p>
+          <h4>{card.taskID}</h4>
+          <p>{card.title}</p>
           <span class="owner-tag">{card.taskOwner}</span>
         </div>
       {/each}
@@ -336,8 +421,8 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
-          <h4>{card.title}</h4>
-          <p>{card.description}</p>
+          <h4>{card.taskID}</h4>
+          <p>{card.title}</p>
           <span class="owner-tag">{card.taskOwner}</span>
         </div>
       {/each}
@@ -351,8 +436,8 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
-          <h4>{card.title}</h4>
-          <p>{card.description}</p>
+          <h4>{card.taskID}</h4>
+          <p>{card.title}</p>
           <span class="owner-tag">{card.taskOwner}</span>
         </div>
       {/each}
@@ -366,8 +451,8 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="kanban-card" on:click={() => openModal(card)}>
           <div class="color-bar" style="background-color: {card.color};"></div>
-          <h4>{card.title}</h4>
-          <p>{card.description}</p>
+          <h4>{card.taskID}</h4>
+          <p>{card.title}</p>
           <span class="owner-tag">{card.taskOwner}</span>
         </div>
       {/each}
@@ -381,6 +466,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="modal" on:click={closeModal}>
+  <Toaster style="z-index: 12;" />
     <div class="modal-content" on:click|stopPropagation>
       <!-- Modal Header -->
       <!-- <button class="modal-close-btn" on:click={closeModal}>&times;</button> -->
@@ -400,10 +486,12 @@
           <div class="details-row">
             <strong>Task Name:</strong>
             <span>
-              {#if isEditable}
+              {#if selectedCard.taskState === 'open'  && !isEditable && yourPermits.includes('create') } <!--for PL Edit task-->
+                <input type="text" bind:value={selectedCard.title} /> 
+              {:else if isEditable && yourPermits.includes('create')} <!--for PL insert Task in creating task modal-->
                 <input type="text" bind:value={selectedCard.title} />
               {:else}
-                {selectedCard.title}
+                {selectedCard.title} <!--for All View Task-->
               {/if}
             </span>
           </div>
@@ -411,10 +499,12 @@
           <div class="details-row">
             <strong>Task Description:</strong>
             <span>
-              {#if isEditable}
+              {#if selectedCard.taskState === 'open' && !isEditable && yourPermits.includes('create')}
+                <textarea style="height: 200px; width: 100%;" bind:value={selectedCard.description}></textarea>
+              {:else if isEditable}
                 <textarea style="height: 200px; width: 100%;" bind:value={selectedCard.description}></textarea>
               {:else}
-                {selectedCard.description}
+                <textarea style="height: 200px; width: 100%;" bind:value={selectedCard.description} disabled></textarea>
               {/if}
             </span>
           </div>
@@ -422,8 +512,22 @@
           <div class="details-row">
             <strong>Plan Name:</strong>
             <span>
-              {#if selectedCard.taskState === 'open' || selectedCard.taskState === 'create' && !isEditable }
-                <select bind:value={selectedCard.planName} on:click={getPlan} on:change={editPlan(selectedCard.taskID, selectedCard.planName)}>
+              {#if selectedCard.taskState === 'open' && !isEditable && yourPermits.includes('create')} <!-- for PL to edit plan-->
+                <select bind:value={selectedCard.planName} on:click={getPlan}>
+                  <option value=''>No Plan</option>
+                  {#each planList as planIndex }
+                    <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
+                  {/each}
+                </select>
+              {:else if selectedCard.taskState === 'done' && !isEditable && yourPermits.includes('create')} <!-- for PL to reject and edit plan-->
+                <select bind:value={selectedCard.planName} on:click={getPlan}> <!-- need to disable btn-->
+                  <option value=''>No Plan</option>
+                  {#each planList as planIndex }
+                    <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
+                  {/each}
+                </select>
+               {:else if selectedCard.taskState === 'open' && !isEditable && yourPermits.includes('open') } <!-- for PM to edit plan-->
+                <select bind:value={selectedCard.planName} on:click={getPlan} >
                   <option value=''>No Plan</option>
                   {#each planList as planIndex }
                     <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
@@ -480,7 +584,7 @@
 
           <!-- Comments Section -->
           <div class="comments-section">
-            <textarea rows="4" bind:value={comment} placeholder="Add a comment..."></textarea>
+            <textarea rows="4" bind:value={comment} placeholder="Add a comment..." on:keydown={handleKeyDown}></textarea>
             <!-- <button class="modal-action-btn" on:click={addComment}>Add Comment</button> -->
           </div>
         </div>
@@ -488,19 +592,27 @@
       
       <!-- Modal Footer (Action Buttons) -->
       <div class="modal-footer">
-      {#if selectedCard.taskState === 'create'}
+      {#if selectedCard.taskState === 'create' && yourPermits.includes('create')} <!-- PL Create task-->
         <button class="modal-action-btn takeon" on:click={submitNewTask} >Create Task</button>
-      {:else if selectedCard.taskState === 'open'}
+
+      {:else if selectedCard.taskState === 'open' && yourPermits.includes('open')} <!-- PM release task-->
         <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'todo')}>Release Task</button>
-      {:else if selectedCard.taskState === 'todo'}
+        <button class="modal-action-btn" on:click={saveChanges}>Save Changes</button>
+
+      {:else if selectedCard.taskState === 'todo' && yourPermits.includes('todo')}
         <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'doing')}>Take On</button>
-      {:else if selectedCard.taskState === 'doing'}
-        <button class="modal-action-btn approval" on:click={updateTask(selectedCard.taskID, 'done')}>Request Approval</button>
+        <button class="modal-action-btn" on:click={saveChanges}>Save Changes</button>
+
+      {:else if selectedCard.taskState === 'doing' && yourPermits.includes('doing')}
+        <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'done')}>Request Approval</button>
         <button class="modal-action-btn approval" on:click={updateTask(selectedCard.taskID, 'todo')}>Give Up</button>
-      {:else if selectedCard.taskState === 'done'}
-        <button class="modal-action-btn approval" on:click={updateTask(selectedCard.taskID, 'closed')}>Approve</button>
+        <button class="modal-action-btn" on:click={saveChanges}>Save Changes</button>
+        
+      {:else if selectedCard.taskState === 'done' && yourPermits.includes('done')}
+        <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'closed')}>Approve</button>
+        <button class="modal-action-btn" on:click={saveChanges}>Save Changes</button>
       {/if}
-        <button class="modal-action-btn" on:click={addComment}>Add Comment</button>
+        
         <button class="modal-close-btn" on:click={closeModal}>Cancel</button>
       </div>
     </div>
@@ -510,11 +622,13 @@
 
   <!---------------------------------- Show create plan modal ------------------------------------>
 {#if PlanModal}
+
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="modal" on:click={closePlanModal}>
   <div class="modal-content-plan" on:click|stopPropagation>
+    <Toaster style="z-index: 12;" />
     <!-- Modal Header -->
     <!-- <button class="modal-close-btn" on:click={closeModal}>&times;</button> -->
     <div class="modal-header">Create Plan</div>
@@ -576,7 +690,7 @@ a.active {
 }
 
 .container {
-  margin-top: 45px;
+  margin-top: 25px;
   align-items: stretch;
   justify-content: center;
   margin-left: auto;
@@ -586,7 +700,7 @@ a.active {
 .header {
   display: flex;
   justify-content: center;
-  text-align: center;
+  text-align:start;
 }
 
 .head {
@@ -625,18 +739,19 @@ a.active {
 /* kanban board */
   .kanban-board {
     display: flex;
-    gap: 20px;
-    padding: 20px;
+    gap: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
 
   .kanban-column {
     background-color: #d7d3d3;
     padding: 10px;
     border-radius: 8px;
-    width: 2000px;
+    width: 100%;
     height: auto;
-    min-height: 870px;
-    max-height: 870px;
+    min-height: 570px;
+    max-height: 570px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
@@ -661,6 +776,9 @@ a.active {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    height: 60px;
+    min-height: 60px;
+    position: relative;
   }
 
   .kanban-card:hover {
@@ -669,13 +787,23 @@ a.active {
 }
 
 .kanban-card .color-bar {
-    width: 10px;
+    /* width: 10px;
     height: 80px;
     margin-left: -12px;
-    margin-top: -10px;
-    position: absolute;
-    border-radius: 6px 0 0 6px; /* Rounded left edge */
-
+    margin-top: -100px;
+    position: sticky;
+    border-radius: 6px 0 0 6px;  */
+    color: white;
+    padding: 2px ;
+    margin-top: -5px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    display: inline-block;
+    align-self: flex-start;
+    position: sticky;
+    z-index: 99;
+    width: 40px;
+    min-height: 5px;
   }
 
   .kanban-card h4 {
@@ -698,8 +826,9 @@ a.active {
     border-radius: 10px;
     font-size: 0.8em;
     display: inline-block;
-    margin-top: 10px;
     align-self: flex-end;
+    position: sticky;
+    z-index: 99;
   }
 
 
@@ -807,7 +936,7 @@ a.active {
 /* Updated Notes Section */
 .notes-section {
   width: 90%;
-  height: 320px;
+  height: 370px;
   overflow-y: auto; /* Allow vertical scrolling */
   overflow-x: hidden; /* Prevent horizontal scrolling */
   padding: 10px;

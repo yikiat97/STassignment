@@ -85,6 +85,22 @@ const login = async (req, res) => {
   }
 };
 
+const logout = (req, res) => {
+  try {
+    // Clear the cookie containing the JWT token
+    res.clearCookie("token");
+
+    // Send response to indicate logout was successful
+    res.status(200).json({ message: "Logout successful" });
+  } catch (error) {
+    // Handle any unexpected errors
+    res
+      .status(500)
+      .json({ message: "Error during logout", error: error.message });
+  }
+};
+
+
 const register = async (req, res) => {
   const { email, password, username, group, active } = req.body;
   try {
@@ -181,6 +197,7 @@ module.exports = {
   getAllGroup,
   insertNewGroup,
   login,
+  logout,
   register,
   updateUserController,
   deletion,

@@ -35,11 +35,11 @@
 <style>
 	.ModalContainer{
 		text-align: center;
-		width: 850px;
+		width: 650px;
 		/* height: 180px; */
 	}
 	dialog {
-		max-width: 900px;
+		/* max-width: 900px; */
 		border-radius: 0.2em;
 		border: none;
 		padding: 0;
@@ -80,7 +80,7 @@
 	.modelCloseBtn{
   cursor: pointer;
   padding: 5px 10px;
-  margin-top: 20px;
+
   border: none;
   color: white;
   background-color: black;
