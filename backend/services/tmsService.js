@@ -1,5 +1,7 @@
 const dotenv = require("dotenv");
 const db = require("../config/database"); // Import the database connection
+const nodemailer = require('nodemailer'); // Using nodemailer to send emails
+
 
 dotenv.config();
 
@@ -34,7 +36,7 @@ const getAllApplicationByUsername = async username => {
 
     // Execute the query, passing the username as a parameter
     const [rows] = await db.query(query, [username]);
-    console.log(rows);
+    //console.log(rows);
 
     // Return the rows if found, otherwise return null
     if (rows.length) {
@@ -242,7 +244,7 @@ const getAllPlansByAppAcronym = async appAcronym => {
     );
 
     if (rows.length === 0) {
-      throw new Error("No plans found for the given App_Acronym");
+      return rows;
     }
 
     return rows; // Return the rows containing all plans for the specified App_Acronym
@@ -379,7 +381,7 @@ const insertTaskWithGeneratedTaskID = async (
     const taskCreator = taskData.taskCreator; 
     const taskOwner = taskData.taskOwner;
     const taskCreateDate = convertDateToInt(taskData.taskCreateDate);
-     
+    taskData.notes += `\n\n {State Transit to: ${taskState} }`
 
     // Insert the new task with the generated Task ID and other data
     await connection.query(
@@ -490,7 +492,7 @@ const getKanbanBoardByAppAcronym = async appAcronym => {
           break;
       }
     });
-    console.log(kanbanBoard);
+    //console.log(kanbanBoard);
 
     return kanbanBoard;
   } catch (error) {
@@ -515,9 +517,9 @@ const updateTaskState = async (task_id, newState) => {
     // Start the transaction
     await connection.beginTransaction();
 
-    // Fetch the current state of the task with a lock to prevent race conditions
+    // Fetch the current state and notes of the task with a lock to prevent race conditions
     const [task] = await connection.query(
-      "SELECT Task_state FROM task WHERE Task_id = ? FOR UPDATE",
+      "SELECT Task_state, Task_notes FROM task WHERE Task_id = ? FOR UPDATE",
       [task_id]
     );
 
@@ -526,6 +528,7 @@ const updateTaskState = async (task_id, newState) => {
     }
 
     const currentState = task[0].Task_state;
+    const currentNotes = task[0].Task_notes || ""; // Ensure notes are not null
 
     // Validate if the transition is allowed
     const allowedTransitions = stateTransitions[currentState];
@@ -535,10 +538,13 @@ const updateTaskState = async (task_id, newState) => {
       );
     }
 
-    // Update the task's state
+    // Append the state transition details to the notes
+    const newNotes = `${currentNotes}\n\n{State Transited to: ${newState}}`;
+
+    // Update the task's state and notes
     const [result] = await connection.query(
-      "UPDATE task SET Task_state = ? WHERE Task_id = ?",
-      [newState, task_id]
+      "UPDATE task SET Task_state = ?, Task_notes = ? WHERE Task_id = ?",
+      [newState, newNotes, task_id]
     );
 
     if (result.affectedRows === 0) {
@@ -560,6 +566,7 @@ const updateTaskState = async (task_id, newState) => {
     connection.release();
   }
 };
+
 
 
 
@@ -592,6 +599,7 @@ const updateTask = async (taskData) => {
     } = taskData;
 
     taskCreateDate = convertDateToInt(taskCreateDate);
+ 
 
     // Build the SQL query dynamically
     let query = `UPDATE task SET Task_state = ?, Task_creator = ?, Task_owner = ?, Task_createDate = ?`;
@@ -642,7 +650,7 @@ const updateTask = async (taskData) => {
 
 
 
-const getUserPermits = async username => {
+const getUserPermits = async (username, appAcronym) => {
   try {
     // Get the user's groups from the user_group table
     const [userGroups] = await db.query(
@@ -659,9 +667,25 @@ const getUserPermits = async username => {
     }
 
     // Extract the user groups
-    const groups = userGroups.map(group => group.usergroup);
+    const groups = userGroups.map((group) => group.usergroup);
 
-    // Check if the user belongs to any permit in the application table
+    // Initialize permissions array
+    const permissions = [];
+
+    // First check if user belongs to 'PL' or 'PM' groups and add to the permissions list
+    if (groups.includes("PL")) {
+      permissions.push("PL");
+    }
+    if (groups.includes("PM")) {
+      permissions.push("PM");
+    }
+
+    // If no App_Acronym is provided, just return PL/PM permissions
+    if (!appAcronym) {
+      return { permissions };
+    }
+
+    // If App_Acronym is provided, check the user’s permissions for that specific application
     const [applications] = await db.query(
       `
       SELECT 
@@ -672,50 +696,114 @@ const getUserPermits = async username => {
         App_permit_Done, 
         App_permit_create
       FROM application
-      WHERE App_permit_Open IN (?) 
+      WHERE App_Acronym = ?
+        AND (App_permit_Open IN (?) 
         OR App_permit_toDoList IN (?)
         OR App_permit_Doing IN (?)
         OR App_permit_Done IN (?)
-        OR App_permit_create IN (?)
+        OR App_permit_create IN (?))
     `,
-      [groups, groups, groups, groups, groups]
+      [appAcronym, groups, groups, groups, groups, groups]
     );
 
-    // Build the permission list for each application
-    const userPermissions = applications.map(app => {
-      const permissions = [];
-      if (groups.includes(app.App_permit_Open)) {
-        permissions.push("open");
-      }
-      if (groups.includes(app.App_permit_toDoList)) {
-        permissions.push("todo");
-      }
-      if (groups.includes(app.App_permit_Doing)) {
-        permissions.push("doing");
-      }
-      if (groups.includes(app.App_permit_Done)) {
-        permissions.push("done");
-      }
-      if (groups.includes(app.App_permit_create)) {
-        permissions.push("create");
-      }
-      if (groups.includes("PL")) {
-        permissions.push("PL");
-      }
-      if (groups.includes("PM")) {
-        permissions.push("PM");
-      }
-      return {
-        App_Acronym: app.App_Acronym,
-        permissions
-      };
-    });
+    // If no application matches, return just PL/PM permissions
+    if (applications.length === 0) {
+      return { permissions };
+    }
 
-    return userPermissions;
+    // Build the permission list for the specific application
+    const appPermissions = [...permissions]; // Start with global permissions (PL/PM)
+
+    const app = applications[0]; // We're assuming only one application should match
+
+    // Check if the user has application-level permits
+    if (groups.includes(app.App_permit_Open)) {
+      appPermissions.push("open");
+    }
+    if (groups.includes(app.App_permit_toDoList)) {
+      appPermissions.push("todo");
+    }
+    if (groups.includes(app.App_permit_Doing)) {
+      appPermissions.push("doing");
+    }
+    if (groups.includes(app.App_permit_Done)) {
+      appPermissions.push("done");
+    }
+    if (groups.includes(app.App_permit_create)) {
+      appPermissions.push("create");
+    }
+
+    return {
+      App_Acronym: appAcronym,
+      permissions: appPermissions
+    };
   } catch (error) {
     throw new Error(error.message);
   }
 };
+
+
+
+;
+
+const sendEmailToPLorPermitDone = async (App_Acronym) => {
+  try {
+    // Fetch all users who are in the 'PL' group or have 'permit_Done'
+    const [users] = await db.query(
+      `
+      SELECT DISTINCT accounts.email 
+      FROM accounts 
+      JOIN user_group ON accounts.username = user_group.username
+      JOIN application ON (user_group.usergroup = 'PL' OR application.App_permit_Done = user_group.usergroup)
+      WHERE application.App_Acronym = ?
+      AND (user_group.usergroup = 'PL' OR user_group.usergroup = application.App_permit_Done)
+      `,
+      [App_Acronym]
+    );
+
+    // Extract email addresses
+    const emails = users.map((user) => user.email).filter((email) => email);
+
+    // Check if any emails exist
+    if (emails.length === 0) {
+      throw new Error(
+        'No users found with group "PL" or "permit_Done" for the given application.'
+      );
+    }
+
+    // Create a transporter for Gmail
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER, // Replace with your Gmail address
+        pass: process.env.EMAIL_PASS, // Use App Password if 2FA is enabled
+      },
+    });
+
+    // Set up the email options
+    const mailOptions = {
+      from: process.env.EMAIL_USER, // Your email
+      to: emails.join(","),
+      subject: "Task Notification",
+      text: "Hello, this is a notification for the task related to your application.",
+    };
+
+    // Send the email
+    await transporter.sendMail(mailOptions);
+
+    // Return success message
+    return { message: `Email sent successfully to ${emails.length} users.` };
+  } catch (error) {
+    // Handle any errors
+    console.log(error)
+    throw new Error(`Error sending email: ${error.message}`);
+  }
+};
+
+module.exports = {
+  sendEmailToPLorPermitDone,
+};
+
 
 
 
@@ -730,5 +818,6 @@ module.exports = {
   getKanbanBoardByAppAcronym,
   updateTaskState,
   updateTask,
-  getUserPermits
+  getUserPermits,
+  sendEmailToPLorPermitDone
 };

@@ -57,13 +57,13 @@
   }
 
 
-  const getUserPermits = async() => {
+  const getUserPermits = async(App_Name_URL) => {
         try{
-        const UserPermits = await axios.post(ApiUrl + '/getUserPermits', {username: globalUsername}, {
+        const UserPermits = await axios.post(ApiUrl + '/getUserPermits', {username: globalUsername, appAcronym:App_Name_URL}, {
           withCredentials: true  
           });
-          yourPermits = UserPermits.data.permissions[0].permissions
-         console.log(UserPermits.data.permissions[0].permissions)
+          yourPermits = UserPermits.data.permissions.permissions
+         console.log(UserPermits.data.permissions.permissions)
         // console.log(kanbanBoard)
 
       } catch (error) {
@@ -90,7 +90,8 @@
             isAdmin = true      
         }
         getAllTask()
-        getUserPermits()
+        getUserPermits(App_Name_URL)
+        getPlan()
     } catch (error) {
         console.error('Access denied:', error.response.data.message);
         handleError(error.response.data);
@@ -207,14 +208,31 @@
       comment = '';
     }
   }
+  
+  function SendEmail (){
+    const response =  axios.post(ApiUrl + '/notifyUsers', {App_Acronym:Global_App_Acronym}, {
+      withCredentials: true  
+      }).then(response => {
+     // console.log("Status:", response.status);  // Logs the status, e.g., 200
+
+      customAlert("Email Sent")
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        handleError(error.response.data);
+      });  
+  }
 
 
+
+let DisableApproveBtn = false
   function editPlan(id, planName){
       const response =  axios.put(ApiUrl + '/editTaskPlan', {task_id: id, newTaskPlan:planName }, {
       withCredentials: true  
       }).then(response => {
      // console.log("editPlan Status:", response);  // Logs the status, e.g., 200
       // planList = response.data
+      DisableApproveBtn = true
       customAlert("Plan Updated")
   
       })
@@ -265,6 +283,11 @@
 
   async function updateTask(taskID, state){
     await saveChanges()
+
+    if (state ==='done'){
+      SendEmail()
+    }
+
     const response =  await axios.put(ApiUrl + '/updateTaskState', {task_id: taskID, newState:state }, {
       withCredentials: true  
       }).then(response => {
@@ -272,6 +295,7 @@
 
       getAllTask()
       closeModal()
+      DisableApproveBtn = false
       // planList = response.data
   
       })
@@ -280,6 +304,52 @@
         handleError(error.response.data);
       });    
   }
+
+  async function updateRejectedTask(taskID, state){
+    //await saveChanges()
+    const response =  await axios.put(ApiUrl + '/updateTaskState', {task_id: taskID, newState:state }, {
+      withCredentials: true  
+      }).then(response => {
+      console.log("getPlan Status:", response);  
+
+      getAllTask()
+      closeModal()
+      DisableApproveBtn = false
+      // planList = response.data
+  
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        handleError(error.response.data);
+      });    
+  }
+
+  async function saveRejectedChanges() {
+    try {
+      await addComment(); // Wait for addComment to complete
+      //await editPlan(id, planName); // Wait for editPlan to complete
+      console.log(selectedCard) 
+      const response =  await axios.put(ApiUrl + '/UpdateTask', selectedCard, {
+        withCredentials: true  
+        }).then(response => {
+      // console.log("Status:", response.status);  // Logs the status, e.g., 200
+
+        //showModal = false;
+        getAllTask()
+        customAlert("Task Updated")
+        })
+        .catch(error => {
+      
+          console.error("Error:", error);
+          handleError(error.response.data);
+        });    
+
+      console.log(selectedCard); // Log the updated card after changes are saved
+    } catch (error) {
+      console.error('Error saving changes:', error); // Handle any errors
+    }
+  }
+
     
 
 //////////////////////////////////////// Modal functionalities /////////////////////////////////////
@@ -520,7 +590,7 @@
                   {/each}
                 </select>
               {:else if selectedCard.taskState === 'done' && !isEditable && yourPermits.includes('create')} <!-- for PL to reject and edit plan-->
-                <select bind:value={selectedCard.planName} on:click={getPlan}> <!-- need to disable btn-->
+                <select bind:value={selectedCard.planName} on:click={getPlan} on:change={editPlan(selectedCard.taskID,selectedCard.planName)}> <!-- need to disable btn-->
                   <option value=''>No Plan</option>
                   {#each planList as planIndex }
                     <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
@@ -609,8 +679,13 @@
         <button class="modal-action-btn" on:click={saveChanges}>Save Changes</button>
         
       {:else if selectedCard.taskState === 'done' && yourPermits.includes('done')}
-        <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'closed')}>Approve</button>
-        <button class="modal-action-btn" on:click={saveChanges}>Save Changes</button>
+      {#if !DisableApproveBtn}
+      <button class="modal-action-btn takeon" on:click={() => updateTask(selectedCard.taskID, 'closed')}>Approve </button>
+      {/if}
+              
+      <button class="modal-action-btn approval" on:click={updateRejectedTask(selectedCard.taskID, 'doing')}>Reject </button>
+
+        <button class="modal-action-btn" on:click={saveRejectedChanges}>Save Changes</button>
       {/if}
         
         <button class="modal-close-btn" on:click={closeModal}>Cancel</button>

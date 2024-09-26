@@ -79,12 +79,13 @@
 
 
   const getUserPermits = async() => {
+    console.log(globalUsername)
         try{
-        const UserPermits = await axios.post(ApiUrl + '/getUserPermits', {username: globalUsername}, {
+        const UserPermits = await axios.post(ApiUrl + '/getUserPermits', {username: globalUsername, appAcronym: null}, {
           withCredentials: true  
         });
-        console.log(UserPermits.data.permissions[0].permissions)
-        yourPermits = UserPermits.data.permissions[0].permissions
+        console.log(UserPermits.data.permissions.permissions)
+        yourPermits = UserPermits.data.permissions.permissions
         
         if (yourPermits.includes('PL')){
         isHardcodedPL = true
@@ -108,7 +109,8 @@
         globalUsername = response.data.username
         // console.log('Access granted:', response.data);
         if (response.data.result.includes("admin") ){
-            isAdmin = true      
+            isAdmin = true 
+                 
         }
 
 
@@ -321,7 +323,8 @@ function submitEditedApp() {
   <div class="wrapper">
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-{#each AppList as app, appIndex}
+ {#if AppList}
+ {#each AppList as app, appIndex}
 
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- on:click={goto(`/Home%20page/TMS/?App_Acronym=${app.App_Acronym}`) } -->
@@ -345,6 +348,7 @@ function submitEditedApp() {
    
     
   {/each}
+{/if}
 
   </div>
 

@@ -141,7 +141,7 @@ const insertTaskController = async (req, res) => {
 const getKanbanBoardController = async (req, res) => {
   try {
     const appAcronym = req.query.appAcronym;
-    console.log(appAcronym)
+    //console.log(appAcronym)
     // Fetch the Kanban board structure
     const kanbanBoard = await tmsService.getKanbanBoardByAppAcronym(appAcronym);
 
@@ -189,19 +189,33 @@ const updateTask = async (req, res) => {
 
 
 const getUserPermitsController = async (req, res) => {
-  const { username } = req.body;
+  const { username,appAcronym } = req.body;
 
   try {
-    const userPermissions = await tmsService.getUserPermits(username);
+    const userPermissions = await tmsService.getUserPermits(username,appAcronym);
 
-    if (userPermissions.length === 0) {
-      return res.status(404).json({ message: "No permissions found for user" });
-    }
+    // if (userPermissions.length === 0) {
+    //   return res.status(404).json({ message: "No permissions found for user" });
+    // }
 
     res.status(200).json({
       message: "Permissions retrieved successfully",
       permissions: userPermissions
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
+const notifyUsers = async (req, res) => {
+  const { App_Acronym } = req.body; // Assuming the application acronym is passed in the body
+
+  try {
+    const result = await tmsService.sendEmailToPLorPermitDone(App_Acronym);
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -221,5 +235,6 @@ module.exports = {
   getKanbanBoardController,
   updateTaskStateController,
   updateTask,
-  getUserPermitsController
+  getUserPermitsController,
+  notifyUsers
 };
