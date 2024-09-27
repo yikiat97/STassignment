@@ -48,14 +48,17 @@ const getAllApplicationByUsername = async username => {
   try {
     // Prepare the query with simple string comparisons instead of JSON_CONTAINS
     const query = `
-      SELECT a.* FROM application a
-      JOIN user_group ug ON a.App_permit_Open = ug.usergroup 
-                      OR a.App_permit_toDoList = ug.usergroup
-                      OR a.App_permit_Doing = ug.usergroup
-                      OR a.App_permit_Done = ug.usergroup
-                      OR a.App_permit_create = ug.usergroup
+      SELECT DISTINCT a.* 
+      FROM application a
+      JOIN user_group ug 
+      ON a.App_permit_Open = ug.usergroup 
+        OR a.App_permit_toDoList = ug.usergroup
+        OR a.App_permit_Doing = ug.usergroup
+        OR a.App_permit_Done = ug.usergroup
+        OR a.App_permit_create = ug.usergroup
       WHERE ug.username = ?;
     `;
+
 
     // Execute the query, passing the username as a parameter
     const [rows] = await db.query(query, [username]);
@@ -93,6 +96,18 @@ const insertApplication = async appData => {
       throw new Error(
         "App_Acronym, App_Rnumber, App_startDate, and App_endDate are mandatory fields"
       );
+    }
+
+      // Regular expression to match alphanumeric characters and underscores, 1-50 characters long
+    const appAcronymRegex = /^[a-zA-Z0-9_]{1,50}$/;
+
+    // Check if appAcronym is valid
+    if (!App_Acronym || !appAcronymRegex.test(App_Acronym)) {
+      throw new Error("Invalid App_Acronym: Must be 1-50 characters and contain only alphanumeric characters or underscores.");
+    }
+
+    if (!Number.isInteger(App_Rnumber) || App_Rnumber <= 0) {
+      throw new Error("Invalid App_Rnumber: Must be an integer and greater than 0.");
     }
 
     App_startDate = convertDateToInt(App_startDate);
@@ -351,7 +366,7 @@ const updateTaskPlan = async (task_id, newTaskPlan) => {
   }
 };
 
-const insertTaskWithGeneratedTaskID = async (appAcronym, taskData) => {
+const insertTaskWithGeneratedTaskID = async (appAcronym, username, taskData) => {
   const connection = await db.getConnection();
 
   try {
@@ -360,12 +375,18 @@ const insertTaskWithGeneratedTaskID = async (appAcronym, taskData) => {
 
     // Lock the application row to prevent race conditions
     const [app] = await connection.query(
-      "SELECT App_Rnumber FROM application WHERE App_Acronym = ? FOR UPDATE",
+      "SELECT App_Rnumber, App_permit_create  FROM application WHERE App_Acronym = ? FOR UPDATE",
       [appAcronym]
     );
 
     if (app.length === 0) {
       throw new Error("Application not found for the given App_Acronym");
+    }
+
+    const permitCreate = app[0].App_permit_create;
+    const hasPermission = await checkGroup(username, permitCreate);
+    if (!hasPermission) {
+      throw new Error("User does not have permission to create a task.");
     }
 
     // Get and increment the Rnumber
@@ -659,13 +680,10 @@ const updateTask = async (taskData, username, NewState) => {
     const appAcronym = app[0].App_Acronym;
     let hasPermission = false;
     let tempTaskState = taskState;
-    console.log('newStsta', NewState);
 
-     // If updating state den will check permission, if not treat as updating comment notes
-     if (NewState){
+    if (NewState){ ////////////////// for state transition to auto update comments
       tempTaskState = NewState;
-     } 
-      // Moving forward: open -> todo
+        // Moving forward: open -> todo
       if (
         tempTaskState === "todo" &&
         app[0].App_permit_Open &&
@@ -717,7 +735,47 @@ const updateTask = async (taskData, username, NewState) => {
           `User '${username}' does not have permission to update the task state to '${tempTaskState}'`
         );
       }
-    
+    } 
+
+    ////////////////////////// v take it as normal update task/comments with permit checks v ////////////////////////////////
+    if (
+      tempTaskState === "open" &&
+      app[0].App_permit_Open &&
+      !hasPermission
+    ) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Open);
+    }
+    // Moving forward or backward: todo -> doing or doing -> todo
+    if (
+      tempTaskState === "todo" &&
+      app[0].App_permit_toDoList &&
+      !hasPermission
+    ) {
+      hasPermission = await checkGroup(username, app[0].App_permit_toDoList);
+    }
+    if (
+      tempTaskState === "doing" &&
+      app[0].App_permit_Doing &&
+      !hasPermission
+    ) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Doing);
+    }
+    // Moving forward or backward: doing -> done or done -> doing
+    if (
+      tempTaskState === "done" &&
+      app[0].App_permit_Doing &&
+      !hasPermission
+    ) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Doing);
+    }
+
+    if (!hasPermission) {
+      throw new Error(
+        `User '${username}' does not have permission to update the task state to '${tempTaskState}'`
+      );
+    }
+/////////////////////////// ^ take it as normal update task/comments with permit checks ^ ////////////////////////////////
+   
 
 
 

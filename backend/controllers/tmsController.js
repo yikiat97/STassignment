@@ -1,7 +1,8 @@
 const tmsService = require("../services/tmsService");
 
 const getAllApplicationByUsername = async (req, res) => {
-  const username = req.query.username;
+  const {username} = req.body;
+  
   try {
     const users = await tmsService.getAllApplicationByUsername(username);
     res.status(200).json(users);
@@ -58,7 +59,7 @@ const updateApplicationController = async (req, res) => {
 const getAllPlansByAppAcronymController = async (req, res) => {
   try {
   
-    const appAcronym = req.query.appAcronym;
+    const {appAcronym} = req.body;
     // Call the service to get all plans for the given App_Acronym
     const plans = await tmsService.getAllPlansByAppAcronym(appAcronym);
 
@@ -120,13 +121,14 @@ const updateTaskPlanController = async (req, res) => {
 
 const insertTaskController = async (req, res) => {
   try {
-    const { appAcronym } = req.body; // Get App_Acronym from request body
-    const taskData = req.body; // Assume the task data is also in the body
+    const { taskData, username, appAcronym } = req.body; // Get App_Acronym from request body
+    //const taskData = req.body; // Assume the task data is also in the body
     //const currentUser = req.user.username; // Assuming you have the current user available in req.user
 
     // Call the service to insert the task with a unique Task ID and the specified values
     const result = await tmsService.insertTaskWithGeneratedTaskID(
       appAcronym,
+      username,
       taskData,
       //currentUser
     );
@@ -140,7 +142,7 @@ const insertTaskController = async (req, res) => {
 
 const getKanbanBoardController = async (req, res) => {
   try {
-    const appAcronym = req.query.appAcronym;
+    const {appAcronym} = req.body;
     //console.log(appAcronym)
     // Fetch the Kanban board structure
     const kanbanBoard = await tmsService.getKanbanBoardByAppAcronym(appAcronym);

@@ -51,7 +51,7 @@
 
   const getAllApplication = async() => {
       try{
-      const Apps = await axios.get(ApiUrl + '/getApplicationByUsername?username='+ globalUsername, {
+      const Apps = await axios.post(ApiUrl + '/getApplicationByUsername', {username: globalUsername}, {
         withCredentials: true  
         });
 

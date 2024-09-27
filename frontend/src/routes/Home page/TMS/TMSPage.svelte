@@ -43,7 +43,7 @@
 
     const getAllTask = async() => {
         try{
-        const tasksListWithCategory = await axios.get(ApiUrl + '/getAllTask?appAcronym='+ App_Name_URL, {
+        const tasksListWithCategory = await axios.post(ApiUrl + '/getAllTask', {appAcronym:App_Name_URL} ,{
           withCredentials: true  
           });
         kanbanBoard = tasksListWithCategory.data
@@ -64,8 +64,17 @@
           yourPermits = UserPermits.data.permissions.permissions
          console.log(UserPermits.data.permissions.permissions)
         // console.log(kanbanBoard)
+        if (UserPermits.data.permissions.permissions.length === 0){
+          App_Name_URL = ''
+          Global_App_Acronym = ''
+          location.reload()
+          customError("You have no permit in this application, bye bye")
+        }
 
       } catch (error) {
+        App_Name_URL = ''
+        Global_App_Acronym = ''
+        location.reload()
         console.error('error:', error.response.data.message);
         handleError(error.response.data);
       }
@@ -126,7 +135,7 @@
 
   let planList = []
   function getPlan() {
-      const response =  axios.get(ApiUrl + '/plans?appAcronym='+ App_Name_URL, {
+      const response =  axios.post(ApiUrl + '/plans', {appAcronym: App_Name_URL}, {
       withCredentials: true  
       }).then(response => {
      // console.log("getPlan Status:", response);  // Logs the status, e.g., 200
@@ -171,7 +180,7 @@
       selectedCard.taskState = 'open'
       addComment()
       //console.log('Submit Task var: ',selectedCard)
-      const response =  axios.post(ApiUrl + '/insertTask', selectedCard, {
+      const response =  axios.post(ApiUrl + '/insertTask', {taskData:selectedCard, username:globalUsername, appAcronym:Global_App_Acronym}, {
       withCredentials: true  
       }).then(response => {
      // console.log("Status:", response.status);  // Logs the status, e.g., 200
@@ -297,9 +306,7 @@ let DisableApproveBtn = false
   async function updateTask(taskID, state){
     await saveChanges(state)
 
-    if (state ==='done'){
-      SendEmail()
-    }
+
 
     const response =  await axios.put(ApiUrl + '/updateTaskState', {task_id: taskID, newState:state, username: globalUsername }, {
       withCredentials: true  
@@ -308,6 +315,9 @@ let DisableApproveBtn = false
 
       getAllTask()
       closeModal()
+      if (state ==='done'){
+        SendEmail()
+      }
       DisableApproveBtn = false
       // planList = response.data
   
@@ -319,7 +329,7 @@ let DisableApproveBtn = false
   }
 
   async function updateRejectedTask(taskID, state){
-    //await saveChanges()
+    await saveRejectedChanges(state)
     const response =  await axios.put(ApiUrl + '/updateTaskState', {task_id: taskID, newState:state,  username: globalUsername }, {
       withCredentials: true  
       }).then(response => {
@@ -369,7 +379,7 @@ let DisableApproveBtn = false
   function openModal(card) {
     // selectedCard = card;
     getAllTask()
-getUserPermits()
+getUserPermits(App_Name_URL)
     showModal = true;
     selectedCard = card;
     originalPlanName = selectedCard.planName;
@@ -423,12 +433,12 @@ getUserPermits()
     return formattedDate
   }
 
-  function handleKeyDown(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault(); // Prevent default "Enter" behavior
-      addComment(); // Call the function to add the comment
-    }
-  }
+  // function handleKeyDown(event) {
+  //   if (event.key === 'Enter' && !event.shiftKey) {
+  //     event.preventDefault(); // Prevent default "Enter" behavior
+  //     addComment(); // Call the function to add the comment
+  //   }
+  // }
 
 
 
@@ -574,7 +584,7 @@ getUserPermits()
             <strong>Task Name:</strong>
             <span>
               {#if selectedCard.taskState === 'open'  && !isEditable && yourPermits.includes('create') } <!--for PL Edit task-->
-                <input type="text" bind:value={selectedCard.title} /> 
+                <input type="text" bind:value={selectedCard.title} disabled/> 
               {:else if isEditable && yourPermits.includes('create')} <!--for PL insert Task in creating task modal-->
                 <input type="text" bind:value={selectedCard.title} />
               {:else}
@@ -587,7 +597,7 @@ getUserPermits()
             <strong>Task Description:</strong>
             <span>
               {#if selectedCard.taskState === 'open' && !isEditable && yourPermits.includes('create')}
-                <textarea style="height: 200px; width: 100%;" bind:value={selectedCard.description}></textarea>
+                <textarea style="height: 200px; width: 100%;" bind:value={selectedCard.description} disabled></textarea>
               {:else if isEditable}
                 <textarea style="height: 200px; width: 100%;" bind:value={selectedCard.description}></textarea>
               {:else}
@@ -671,7 +681,7 @@ getUserPermits()
 
           <!-- Comments Section -->
           <div class="comments-section">
-            <textarea rows="4" bind:value={comment} placeholder="Add a comment..." on:keydown={handleKeyDown}></textarea>
+            <textarea rows="4" bind:value={comment} placeholder="Add a comment..." ></textarea>
             <!-- <button class="modal-action-btn" on:click={addComment}>Add Comment</button> -->
           </div>
         </div>
@@ -684,27 +694,32 @@ getUserPermits()
 
       {:else if selectedCard.taskState === 'open' && yourPermits.includes('open')} <!-- PM release task-->
         <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'todo')}>Release Task</button>
+        <button class="modal-action-btn" on:click={() => saveChanges(null)}>Save Changes</button>
 
       {:else if selectedCard.taskState === 'todo' && yourPermits.includes('todo')}
         <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'doing')}>Take On</button>
+        <button class="modal-action-btn" on:click={() => saveChanges(null)}>Save Changes</button>
 
       {:else if selectedCard.taskState === 'doing' && yourPermits.includes('doing')}
         <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'done')}>Request Approval</button>
         <button class="modal-action-btn approval" on:click={updateTask(selectedCard.taskID, 'todo')}>Give Up</button>
-        
+        <button class="modal-action-btn" on:click={() => saveChanges(null)}>Save Changes</button>
+
       {:else if selectedCard.taskState === 'done' && yourPermits.includes('done')}
         {#if !DisableApproveBtn}
           <button class="modal-action-btn takeon" on:click={() => updateTask(selectedCard.taskID, 'closed')}>Approve </button>
         {/if}       
         <button class="modal-action-btn approval" on:click={updateRejectedTask(selectedCard.taskID, 'doing')}>Reject </button>
+        <button class="modal-action-btn" on:click={() => saveRejectedChanges(null)}>Save Changess</button>
       {/if}
 
-      {#if selectedCard.taskState != 'create' && selectedCard.taskState != 'done' && selectedCard.taskState != 'closed'}
+      <button class="modal-close-btn" on:click={closeModal}>Cancel</button>
+      <!-- {#if selectedCard.taskState != 'create' && selectedCard.taskState != 'done' && selectedCard.taskState != 'closed'}
         <button class="modal-action-btn" on:click={() => saveChanges(null)}>Save Changes</button>
         {:else if selectedCard.taskState === 'done'}
          <button class="modal-action-btn" on:click={() => saveRejectedChanges(null)}>Save Changess</button>
-      {/if}
-        <button class="modal-close-btn" on:click={closeModal}>Cancel</button>
+      {/if} -->
+        
       </div>
     </div>
   </div>
