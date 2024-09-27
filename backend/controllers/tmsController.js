@@ -156,7 +156,7 @@ const getKanbanBoardController = async (req, res) => {
 const updateTaskStateController = async (req, res) => {
   try {
  
-    const { task_id, newState } = req.body; // Get the new state from the request body
+    const { task_id, newState, username } = req.body; // Get the new state from the request body
 
     // Validate if newState is provided
     if (!newState || newState.trim() === "") {
@@ -164,23 +164,28 @@ const updateTaskStateController = async (req, res) => {
     }
 
     // Call the service function to update the task state
-    const result = await tmsService.updateTaskState(task_id, newState);
+    const result = await tmsService.updateTaskState(
+      task_id,
+      newState,
+      username
+    );
 
     res.status(200).json(result); // Send success response
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
 
 
 const updateTask = async (req, res) => {
-  const taskData = req.body;
+  const { taskData, username, NewState } = req.body;
+  console.log(NewState);
 
   try {
 
     // Call the updateTask service to handle the update
-    const result = await tmsService.updateTask(taskData);
+    const result = await tmsService.updateTask(taskData, username, NewState);
     res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });

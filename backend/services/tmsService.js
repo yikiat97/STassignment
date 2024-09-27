@@ -1,7 +1,6 @@
 const dotenv = require("dotenv");
 const db = require("../config/database"); // Import the database connection
-const nodemailer = require('nodemailer'); // Using nodemailer to send emails
-
+const nodemailer = require("nodemailer"); // Using nodemailer to send emails
 
 dotenv.config();
 
@@ -20,6 +19,30 @@ function convertIntToDate(intDate) {
   const day = dateStr.slice(6, 8);
   return `${year}-${month}-${day}`;
 }
+
+const checkGroup = async (username, groupname) => {
+  try {
+    // Query the database to check if the user is in the specified group
+    const [result] = await db.query(
+      `
+      SELECT 1 FROM user_group 
+      WHERE username = ? AND usergroup = ?
+      LIMIT 1
+      `,
+      [username, groupname]
+    );
+
+    // If a row is found, the user is in the group
+    if (result.length > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    throw new Error(`Error checking group: ${error.message}`);
+  }
+};
+
 
 const getAllApplicationByUsername = async username => {
   try {
@@ -49,10 +72,6 @@ const getAllApplicationByUsername = async username => {
   }
 };
 
-
-
-
-
 const insertApplication = async appData => {
   try {
     // Destructure the appData object to extract values
@@ -69,7 +88,6 @@ const insertApplication = async appData => {
       App_permit_create
     } = appData;
 
-
     // Validate mandatory fields
     if (!App_Acronym || !App_Rnumber || !App_startDate || !App_endDate) {
       throw new Error(
@@ -79,7 +97,6 @@ const insertApplication = async appData => {
 
     App_startDate = convertDateToInt(App_startDate);
     App_endDate = convertDateToInt(App_endDate);
-
 
     // Build the SQL query dynamically to include only optional fields if provided
     let query = `
@@ -135,17 +152,14 @@ const insertApplication = async appData => {
 
     return result; // Return result of the query
   } catch (error) {
-      if (error.code === "ER_DUP_ENTRY") {
-        throw new Error(
-          "App Name already exists, please use a unique App Name"
-        );
-      }
-      throw new Error(error.message);
+    if (error.code === "ER_DUP_ENTRY") {
+      throw new Error("App Name already exists, please use a unique App Name");
+    }
+    throw new Error(error.message);
   }
 };
 
-
-const updateApplication = async (appData) => {
+const updateApplication = async appData => {
   try {
     // Destructure the appData object to extract values
     let {
@@ -234,7 +248,6 @@ const updateApplication = async (appData) => {
   }
 };
 
-
 const getAllPlansByAppAcronym = async appAcronym => {
   try {
     // Query to fetch all plans by the App_Acronym
@@ -252,8 +265,6 @@ const getAllPlansByAppAcronym = async appAcronym => {
     throw new Error(error.message);
   }
 };
-
-
 
 const insertPlan = async planData => {
   try {
@@ -300,7 +311,7 @@ const insertPlan = async planData => {
       applicationName,
       startDate,
       endDate,
-      color || '#000000'
+      color || "#000000"
     ]; // Plan_color is optional
 
     const [result] = await db.query(query, values);
@@ -310,7 +321,6 @@ const insertPlan = async planData => {
     throw new Error(error.message);
   }
 };
-
 
 const updateTaskPlan = async (task_id, newTaskPlan) => {
   try {
@@ -341,12 +351,7 @@ const updateTaskPlan = async (task_id, newTaskPlan) => {
   }
 };
 
-
-
-const insertTaskWithGeneratedTaskID = async (
-  appAcronym,
-  taskData
-) => {
+const insertTaskWithGeneratedTaskID = async (appAcronym, taskData) => {
   const connection = await db.getConnection();
 
   try {
@@ -378,10 +383,10 @@ const insertTaskWithGeneratedTaskID = async (
 
     // Set defaults for required fields
     const taskState = taskData.taskState;
-    const taskCreator = taskData.taskCreator; 
+    const taskCreator = taskData.taskCreator;
     const taskOwner = taskData.taskOwner;
     const taskCreateDate = convertDateToInt(taskData.taskCreateDate);
-    taskData.notes += `\n\n {State Transit to: ${taskState} }`
+    taskData.notes += `\n\n {State Transit to: ${taskState} }`;
 
     // Insert the new task with the generated Task ID and other data
     await connection.query(
@@ -424,7 +429,6 @@ const insertTaskWithGeneratedTaskID = async (
     connection.release();
   }
 };
-
 
 const getKanbanBoardByAppAcronym = async appAcronym => {
   try {
@@ -510,16 +514,16 @@ const stateTransitions = {
   closed: [] // closing is the final state, no transitions
 };
 
-const updateTaskState = async (task_id, newState) => {
+const updateTaskState = async (task_id, newState, username) => {
   const connection = await db.getConnection();
 
   try {
     // Start the transaction
     await connection.beginTransaction();
 
-    // Fetch the current state and notes of the task with a lock to prevent race conditions
+    // Fetch the current state of the task with a lock to prevent race conditions
     const [task] = await connection.query(
-      "SELECT Task_state, Task_notes FROM task WHERE Task_id = ? FOR UPDATE",
+      "SELECT Task_state, Task_notes, Task_app_Acronym FROM task WHERE Task_id = ? FOR UPDATE",
       [task_id]
     );
 
@@ -528,7 +532,8 @@ const updateTaskState = async (task_id, newState) => {
     }
 
     const currentState = task[0].Task_state;
-    const currentNotes = task[0].Task_notes || ""; // Ensure notes are not null
+    const currentNotes = task[0].Task_notes || "";
+    const taskAppAcronym = task[0].Task_app_Acronym;
 
     // Validate if the transition is allowed
     const allowedTransitions = stateTransitions[currentState];
@@ -537,11 +542,52 @@ const updateTaskState = async (task_id, newState) => {
         `Invalid state transition: Cannot move from '${currentState}' to '${newState}'`
       );
     }
+    console.log(currentNotes);
+    const newNotes = `${currentNotes}\n\n{ ${username} move State to: ${newState}}`;
 
-    // Append the state transition details to the notes
-    const newNotes = `${currentNotes}\n\n{State Transited to: ${newState}}`;
+    // Fetch the application permissions for the current task's application
+    const [app] = await connection.query(
+      "SELECT App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done FROM application WHERE App_Acronym = ?",
+      [taskAppAcronym]
+    );
 
-    // Update the task's state and notes
+    if (app.length === 0) {
+      throw new Error(`Application with acronym '${taskAppAcronym}' not found`);
+    }
+
+    // Check if the user belongs to the correct group for the state transition
+    let hasPermission = false;
+
+    // Moving forward: open -> todo
+    if (newState === "todo" && app[0].App_permit_Open && !hasPermission) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Open);
+    }
+    // Moving forward or backward: todo -> doing or doing -> todo
+    if (newState === "doing" && app[0].App_permit_toDoList && !hasPermission) {
+      hasPermission = await checkGroup(username, app[0].App_permit_toDoList);
+    }
+    if (newState === "todo" && app[0].App_permit_Doing && !hasPermission) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Doing);
+    }
+    // Moving forward or backward: doing -> done or done -> doing
+    if (newState === "done" && app[0].App_permit_Doing && !hasPermission) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Doing);
+    }
+    if (newState === "doing" && app[0].App_permit_Done && !hasPermission) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Done);
+    }
+    // Moving forward: done -> closed
+    if (newState === "closed" && app[0].App_permit_Done && !hasPermission) {
+      hasPermission = await checkGroup(username, app[0].App_permit_Done);
+    }
+    console.log(hasPermission);
+    if (!hasPermission) {
+      throw new Error(
+        `User '${username}' does not have permission to move task to '${newState}'`
+      );
+    }
+
+    // Update the task's state
     const [result] = await connection.query(
       "UPDATE task SET Task_state = ?, Task_notes = ? WHERE Task_id = ?",
       [newState, newNotes, task_id]
@@ -568,17 +614,15 @@ const updateTaskState = async (task_id, newState) => {
 };
 
 
-
-
-const updateTask = async (taskData) => {
+const updateTask = async (taskData, username, NewState) => {
   const connection = await db.getConnection();
+  console.log(taskData);
 
   const { taskState, taskCreator, taskOwner, taskCreateDate } = taskData;
   if (!taskState || !taskCreator || !taskOwner || !taskCreateDate) {
-    return res.status(400).json({
-      message:
-        "Task_state, Task_creator, Task_owner, and Task_createDate are required fields"
-    });
+    throw new Error(
+      "Task_state, Task_creator, Task_owner, and Task_createDate are required fields"
+    );
   }
 
   try {
@@ -599,7 +643,83 @@ const updateTask = async (taskData) => {
     } = taskData;
 
     taskCreateDate = convertDateToInt(taskCreateDate);
- 
+
+    // Fetch the application and its permits
+    const [app] = await connection.query(
+      `SELECT App_Acronym, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done FROM application 
+       JOIN task ON application.App_Acronym = task.Task_app_Acronym 
+       WHERE task.Task_id = ?`,
+      [taskID]
+    );
+
+    if (app.length === 0) {
+      throw new Error(`No application found for task with Task_id: ${taskID}`);
+    }
+
+    const appAcronym = app[0].App_Acronym;
+    let hasPermission = false;
+    let tempTaskState = taskState;
+    console.log('newStsta', NewState);
+
+     // If updating state den will check permission, if not treat as updating comment notes
+     if (NewState){
+      tempTaskState = NewState;
+     } 
+      // Moving forward: open -> todo
+      if (
+        tempTaskState === "todo" &&
+        app[0].App_permit_Open &&
+        !hasPermission
+      ) {
+        hasPermission = await checkGroup(username, app[0].App_permit_Open);
+      }
+      // Moving forward or backward: todo -> doing or doing -> todo
+      if (
+        tempTaskState === "doing" &&
+        app[0].App_permit_toDoList &&
+        !hasPermission
+      ) {
+        hasPermission = await checkGroup(username, app[0].App_permit_toDoList);
+      }
+      if (
+        tempTaskState === "todo" &&
+        app[0].App_permit_Doing &&
+        !hasPermission
+      ) {
+        hasPermission = await checkGroup(username, app[0].App_permit_Doing);
+      }
+      // Moving forward or backward: doing -> done or done -> doing
+      if (
+        tempTaskState === "done" &&
+        app[0].App_permit_Doing &&
+        !hasPermission
+      ) {
+        hasPermission = await checkGroup(username, app[0].App_permit_Doing);
+      }
+      if (
+        tempTaskState === "doing" &&
+        app[0].App_permit_Done &&
+        !hasPermission
+      ) {
+        hasPermission = await checkGroup(username, app[0].App_permit_Done);
+      }
+      // Moving forward: done -> closed
+      if (
+        tempTaskState === "closed" &&
+        app[0].App_permit_Done &&
+        !hasPermission
+      ) {
+        hasPermission = await checkGroup(username, app[0].App_permit_Done);
+      }
+
+      if (!hasPermission) {
+        throw new Error(
+          `User '${username}' does not have permission to update the task state to '${tempTaskState}'`
+        );
+      }
+    
+
+
 
     // Build the SQL query dynamically
     let query = `UPDATE task SET Task_state = ?, Task_creator = ?, Task_owner = ?, Task_createDate = ?`;
@@ -667,7 +787,7 @@ const getUserPermits = async (username, appAcronym) => {
     }
 
     // Extract the user groups
-    const groups = userGroups.map((group) => group.usergroup);
+    const groups = userGroups.map(group => group.usergroup);
 
     // Initialize permissions array
     const permissions = [];
@@ -742,11 +862,7 @@ const getUserPermits = async (username, appAcronym) => {
   }
 };
 
-
-
-;
-
-const sendEmailToPLorPermitDone = async (App_Acronym) => {
+const sendEmailToPLorPermitDone = async App_Acronym => {
   try {
     // Fetch all users who are in the 'PL' group or have 'permit_Done'
     const [users] = await db.query(
@@ -762,7 +878,7 @@ const sendEmailToPLorPermitDone = async (App_Acronym) => {
     );
 
     // Extract email addresses
-    const emails = users.map((user) => user.email).filter((email) => email);
+    const emails = users.map(user => user.email).filter(email => email);
 
     // Check if any emails exist
     if (emails.length === 0) {
@@ -776,8 +892,8 @@ const sendEmailToPLorPermitDone = async (App_Acronym) => {
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER, // Replace with your Gmail address
-        pass: process.env.EMAIL_PASS, // Use App Password if 2FA is enabled
-      },
+        pass: process.env.EMAIL_PASS // Use App Password if 2FA is enabled
+      }
     });
 
     // Set up the email options
@@ -785,7 +901,7 @@ const sendEmailToPLorPermitDone = async (App_Acronym) => {
       from: process.env.EMAIL_USER, // Your email
       to: emails.join(","),
       subject: "Task Notification",
-      text: "Hello, this is a notification for the task related to your application.",
+      text: "Hello, this is a notification for the task related to your application."
     };
 
     // Send the email
@@ -795,16 +911,10 @@ const sendEmailToPLorPermitDone = async (App_Acronym) => {
     return { message: `Email sent successfully to ${emails.length} users.` };
   } catch (error) {
     // Handle any errors
-    console.log(error)
+    console.log(error);
     throw new Error(`Error sending email: ${error.message}`);
   }
 };
-
-module.exports = {
-  sendEmailToPLorPermitDone,
-};
-
-
 
 
 module.exports = {

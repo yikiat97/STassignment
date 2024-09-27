@@ -39,7 +39,7 @@ const authenticateToken = async (req, res, next) => {
 
 
 // Middleware to protect routes and check user roles
-const verifyTokenWithIPAndBrowser =  (requiredRoles) => async(req, res, next) => {
+const verifyTokenWithIPAndBrowser =  (groupname) => async(req, res, next) => {
   const token = req.cookies.token;  // Assume token is stored in cookies
   
   if (!token) {
@@ -60,7 +60,7 @@ const verifyTokenWithIPAndBrowser =  (requiredRoles) => async(req, res, next) =>
     const currentIp = req.ip || req.connection.remoteAddress;
     const currentBrowser = req.headers['user-agent'];  
     const checkUserStatus = await userService.checkUserStatus(decoded.id);
-    const userChecked = await userService.checkGroup(decoded.id,requiredRoles)
+    const userChecked = await userService.checkGroup(decoded.id, groupname);
     req.user = decoded;
     //console.log(userChecked)
 

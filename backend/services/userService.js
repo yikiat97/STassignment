@@ -474,7 +474,7 @@ const getUserGroup = async username => {
 };
 
 // Check user's group membership
-const checkGroup = async (username, requiredRoles) => {
+const checkGroup = async (username, groupname) => {
   try {
     const [rows] = await db.query(
       `
@@ -482,7 +482,7 @@ const checkGroup = async (username, requiredRoles) => {
       FROM user_group ug
       JOIN accounts a ON a.username = ug.username
       WHERE a.username = ? AND ug.usergroup = ?`,
-      [username, requiredRoles]
+      [username, groupname]
     );
     return rows[0].count > 0;
   } catch (error) {
