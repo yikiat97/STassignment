@@ -292,6 +292,11 @@ const insertPlan = async planData => {
       );
     }
 
+    // Validate planName length (1 to 255 characters)
+    if (planName.length < 1 || planName.length > 255) {
+      throw new Error("Plan_MVP_name must be between 1 and 255 characters.");
+    }
+
     startDate = convertDateToInt(startDate);
     endDate = convertDateToInt(endDate);
 
@@ -387,6 +392,12 @@ const insertTaskWithGeneratedTaskID = async (appAcronym, username, taskData) => 
     const hasPermission = await checkGroup(username, permitCreate);
     if (!hasPermission) {
       throw new Error("User does not have permission to create a task.");
+    }
+
+    // Validate the task name length (1 to 255 characters)
+    const taskName = taskData.title;
+    if (taskName.length < 1 || taskName.length > 255) {
+      throw new Error("Task_name must be between 1 and 255 characters.");
     }
 
     // Get and increment the Rnumber
@@ -577,6 +588,7 @@ const updateTaskState = async (task_id, newState, username) => {
     }
 
     // Check if the user belongs to the correct group for the state transition
+    // once check will stop the if statement
     let hasPermission = false;
 
     // Moving forward: open -> todo

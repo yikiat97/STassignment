@@ -233,7 +233,7 @@ function submitNewUser() {
             group: [],
             // @ts-ignore
             password: "",
-            active: 'active',
+            active: 'Active',
             editMode: false
             };
 

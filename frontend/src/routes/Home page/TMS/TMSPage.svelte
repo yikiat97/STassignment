@@ -708,9 +708,13 @@ getUserPermits(App_Name_URL)
       {:else if selectedCard.taskState === 'done' && yourPermits.includes('done')}
         {#if !DisableApproveBtn}
           <button class="modal-action-btn takeon" on:click={() => updateTask(selectedCard.taskID, 'closed')}>Approve </button>
-        {/if}       
+        {/if}    
+          
         <button class="modal-action-btn approval" on:click={updateRejectedTask(selectedCard.taskID, 'doing')}>Reject </button>
+        
+        {#if !DisableApproveBtn} 
         <button class="modal-action-btn" on:click={() => saveRejectedChanges(null)}>Save Changess</button>
+        {/if}
       {/if}
 
       <button class="modal-close-btn" on:click={closeModal}>Cancel</button>
