@@ -84,14 +84,16 @@ CREATE TABLE IF NOT EXISTS `application` (
 
 
 CREATE TABLE IF NOT EXISTS `plan` (
-  Plan_MVP_name VARCHAR(100) PRIMARY KEY NOT NULL,  -- Primary key
-  Plan_app_Acronym VARCHAR(50) NOT NULL,            -- Foreign key to application
-  Plan_startDate INT NOT NULL,                              -- Start date (use DATE instead of INT for date fields)
-  Plan_endDate INT NOT NULL,
-  Plan_color varchar(7),                                -- End date (use DATE)
+  Plan_MVP_name VARCHAR(100) NOT NULL,        -- Part of composite primary key
+  Plan_app_Acronym VARCHAR(50) NOT NULL,      -- Part of composite primary key and foreign key to application
+  Plan_startDate INT NOT NULL,                -- Start date (consider using DATE type instead of INT)
+  Plan_endDate INT NOT NULL,                  -- End date (consider using DATE type instead of INT)
+  Plan_color VARCHAR(7),                      -- Optional color field
+  PRIMARY KEY (Plan_MVP_name, Plan_app_Acronym),  -- Composite primary key
   FOREIGN KEY (Plan_app_Acronym) REFERENCES application(App_Acronym) 
-    ON DELETE CASCADE                               -- If an application is deleted, delete the plan too
+    ON DELETE CASCADE                         -- If an application is deleted, delete the associated plan(s) too
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 
 
@@ -120,20 +122,11 @@ INSERT INTO `application`
 VALUES 
 ('TMS1', 'Task Management System1', 1, '20240101', '20241231', 'admin', 'DEV_forTMS1', 'DEV_forTMS1', 'PL_forTMS1', 'PL_forTMS1');
 
-INSERT INTO `application` 
-(App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done, App_permit_create) 
-VALUES 
-('TMS2', 'Task Management System1', 1, '20240101', '20241231', 'admin2', 'DEV_forTMS1', 'DEV_forTMS1', 'PL_forTMS1', 'PL_forTMS1');
-
-INSERT INTO `application` 
-(App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done, App_permit_create) 
-VALUES 
-('TMS3', 'Task Management System1', 1, '20240101', '20241231', 'admin', 'DEV_forTMS1', 'DEV_forTMS1', 'PL_forTMS1', 'PL_forTMS1');
 
 
 
 
-SELECT * from task
+SELECT * from plan
 
 
 -- SELECT a.* FROM application a

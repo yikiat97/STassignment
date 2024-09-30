@@ -218,10 +218,13 @@ const getUserPermitsController = async (req, res) => {
 
 
 const notifyUsers = async (req, res) => {
-  const { App_Acronym } = req.body; // Assuming the application acronym is passed in the body
+  const { App_Acronym, task_id } = req.body; // Assuming the application acronym is passed in the body
 
   try {
-    const result = await tmsService.sendEmailToPLorPermitDone(App_Acronym);
+    const result = await tmsService.sendEmailToPLorPermitDone(
+      App_Acronym,
+      task_id
+    );
     res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });

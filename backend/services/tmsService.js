@@ -47,17 +47,7 @@ const checkGroup = async (username, groupname) => {
 const getAllApplicationByUsername = async username => {
   try {
     // Prepare the query with simple string comparisons instead of JSON_CONTAINS
-    const query = `
-      SELECT DISTINCT a.* 
-      FROM application a
-      JOIN user_group ug 
-      ON a.App_permit_Open = ug.usergroup 
-        OR a.App_permit_toDoList = ug.usergroup
-        OR a.App_permit_Doing = ug.usergroup
-        OR a.App_permit_Done = ug.usergroup
-        OR a.App_permit_create = ug.usergroup
-      WHERE ug.username = ?;
-    `;
+    const query = `SELECT * FROM application`;
 
 
     // Execute the query, passing the username as a parameter
@@ -316,9 +306,9 @@ const insertPlan = async planData => {
       [planName]
     );
 
-    if (existingPlan.length > 0) {
-      throw new Error("Plan_MVP_name already exists");
-    }
+    // if (existingPlan.length > 0) {
+    //   throw new Error("Plan_MVP_name already exists");
+    // }
 
     // Insert the new plan into the database
     const query = `
@@ -932,7 +922,7 @@ const getUserPermits = async (username, appAcronym) => {
   }
 };
 
-const sendEmailToPLorPermitDone = async App_Acronym => {
+const sendEmailToPLorPermitDone = async (App_Acronym, task_id) => {
   try {
     // Fetch all users who are in the 'PL' group or have 'permit_Done'
     const [users] = await db.query(
@@ -971,7 +961,7 @@ const sendEmailToPLorPermitDone = async App_Acronym => {
       from: process.env.EMAIL_USER, // Your email
       to: emails.join(","),
       subject: "Task Notification",
-      text: "Hello, this is a notification for the task related to your application."
+      text: `Hello, you have a Task ID:${task_id} in ${App_Acronym} to review`
     };
 
     // Send the email

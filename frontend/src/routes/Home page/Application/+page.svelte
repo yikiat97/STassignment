@@ -371,7 +371,7 @@ function submitEditedApp() {
   </div>
   <div class="input-container">
       <label for="Password" style="margin-bottom: 10px;margin-right:8px">App_Description:</label>
-      <input type="text" id="App_Description" bind:value={newApp.App_Description} class="editable" />
+      <textarea style="height: 70px; width:400px;" type="text" id="App_Description" bind:value={newApp.App_Description} class="editable" />
   </div>
   <div class="input-container">
       <label for="Username" style="margin-bottom: 10px;">App_startDate:</label>
@@ -731,7 +731,7 @@ input, select {
 
 .card {
   box-sizing: border-box;
-  width: 430px; /* Set width to accommodate both left and right sections */
+  width: 410px; /* Set width to accommodate both left and right sections */
   padding: 20px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   border-radius: 20px;

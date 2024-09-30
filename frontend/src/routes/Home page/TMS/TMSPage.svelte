@@ -65,18 +65,18 @@
          console.log(UserPermits.data.permissions.permissions)
         // console.log(kanbanBoard)
         if (UserPermits.data.permissions.permissions.length === 0){
-          App_Name_URL = ''
-          Global_App_Acronym = ''
-          location.reload()
-          customError("You have no permit in this application, bye bye")
+          // App_Name_URL = ''
+          // Global_App_Acronym = ''
+          // location.reload()
+          // customError("You have no permit in this application, bye bye")
         }
 
       } catch (error) {
-        App_Name_URL = ''
-        Global_App_Acronym = ''
-        location.reload()
+        // App_Name_URL = ''
+        // Global_App_Acronym = ''
+        // location.reload()
         console.error('error:', error.response.data.message);
-        handleError(error.response.data);
+        // handleError(error.response.data);
       }
   }
 
@@ -219,8 +219,8 @@
     }
   }
   
-  function SendEmail (){
-    const response =  axios.post(ApiUrl + '/notifyUsers', {App_Acronym:Global_App_Acronym}, {
+  function SendEmail (taskID){
+    const response =  axios.post(ApiUrl + '/notifyUsers', {App_Acronym:Global_App_Acronym, task_id:taskID}, {
       withCredentials: true  
       }).then(response => {
      // console.log("Status:", response.status);  // Logs the status, e.g., 200
@@ -316,7 +316,7 @@ let DisableApproveBtn = false
       getAllTask()
       closeModal()
       if (state ==='done'){
-        SendEmail()
+        SendEmail(taskID)
       }
       DisableApproveBtn = false
       // planList = response.data
@@ -430,7 +430,10 @@ getUserPermits(App_Name_URL)
     const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based, so we add 1
     const day = String(today.getDate()).padStart(2, '0');
     const formattedDate = `${year}-${month}-${day}`;
-    return formattedDate
+
+    const now = new Date();
+    const time = now.toTimeString().split(' ')[0];
+    return formattedDate + " " + time
   }
 
   // function handleKeyDown(event) {
@@ -611,28 +614,28 @@ getUserPermits(App_Name_URL)
             <span>
               {#if selectedCard.taskState === 'open' && !isEditable && yourPermits.includes('create')} <!-- for PL to edit plan-->
                 <select bind:value={selectedCard.planName} on:click={getPlan}>
-                  <option value=''>No Plan</option>
+                  
                   {#each planList as planIndex }
                     <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
                   {/each}
                 </select>
               {:else if selectedCard.taskState === 'done' && !isEditable && yourPermits.includes('create')} <!-- for PL to reject and edit plan-->
                 <select bind:value={selectedCard.planName} on:click={getPlan} on:change={editPlan(selectedCard.taskID,selectedCard.planName)}> <!-- need to disable btn-->
-                  <option value=''>No Plan</option>
+                
                   {#each planList as planIndex }
                     <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
                   {/each}
                 </select>
                {:else if selectedCard.taskState === 'open' && !isEditable && yourPermits.includes('open') } <!-- for PM to edit plan-->
                 <select bind:value={selectedCard.planName} on:click={getPlan} >
-                  <option value=''>No Plan</option>
+              
                   {#each planList as planIndex }
                     <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
                   {/each}
                 </select>
               {:else if isEditable }
                 <select bind:value={selectedCard.planName} on:click={getPlan} >
-                  <option value=''>No Plan</option>
+                
                   {#each planList as planIndex }
                     <option value={planIndex.Plan_MVP_name}>{planIndex.Plan_MVP_name}</option>
                   {/each}
@@ -702,7 +705,7 @@ getUserPermits(App_Name_URL)
 
       {:else if selectedCard.taskState === 'doing' && yourPermits.includes('doing')}
         <button class="modal-action-btn takeon" on:click={updateTask(selectedCard.taskID, 'done')}>Request Approval</button>
-        <button class="modal-action-btn approval" on:click={updateTask(selectedCard.taskID, 'todo')}>Give Up</button>
+        <button class="modal-action-btn approval" on:click={updateTask(selectedCard.taskID, 'todo')}>Forfeit</button>
         <button class="modal-action-btn" on:click={() => saveChanges(null)}>Save Changes</button>
 
       {:else if selectedCard.taskState === 'done' && yourPermits.includes('done')}

@@ -26,4 +26,6 @@ router.post("/getUserPermits", authenticateToken, tmsController.getUserPermitsCo
 router.post("/notifyUsers", authenticateToken, tmsController.notifyUsers);
 
 
+
+
 module.exports = router;
