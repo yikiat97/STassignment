@@ -4,6 +4,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const userRoutes = require('./routes/userRoute');
 const tms = require('./routes/tmsRoutes')
+const demo = require("./routes/demoRoutes");
 const { verifyTokenWithIPAndBrowser } = require("./middleware/authMiddleware");
 
 
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/api', userRoutes);
 app.use('/api', tms)
+app.use("/api/demo", demo);
 
 
 app.listen(port, () => {

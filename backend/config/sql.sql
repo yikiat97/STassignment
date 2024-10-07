@@ -59,7 +59,6 @@ SELECT DISTINCT usergroup FROM user_group
 
 
 
-
 -- Use the newly created database
 USE `nodelogin`;
 
@@ -123,16 +122,3 @@ VALUES
 ('TMS1', 'Task Management System1', 1, '20240101', '20241231', 'admin', 'DEV_forTMS1', 'DEV_forTMS1', 'PL_forTMS1', 'PL_forTMS1');
 
 
-
-
-
-SELECT * from plan
-
-
--- SELECT a.* FROM application a
--- JOIN user_group ug ON JSON_CONTAINS(a.App_permit_Open, JSON_QUOTE(ug.usergroup)) 
---                  OR JSON_CONTAINS(a.App_permit_toDoList, JSON_QUOTE(ug.usergroup))
---                  OR JSON_CONTAINS(a.App_permit_Doing, JSON_QUOTE(ug.usergroup))
---                  OR JSON_CONTAINS(a.App_permit_Done, JSON_QUOTE(ug.usergroup))
---                  OR JSON_CONTAINS(a.App_permit_create, JSON_QUOTE(ug.usergroup))
--- WHERE ug.username = 'yikiat2';  -- Change 'admin' to the desired username

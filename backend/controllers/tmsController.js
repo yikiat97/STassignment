@@ -234,6 +234,84 @@ const notifyUsers = async (req, res) => {
 
 
 
+
+const CreateTask = async (req, res) => {
+  try {
+    const {
+      username,
+      password,
+      application_appAcronym,
+      name_of_task,
+      description_of_task
+    } = req.body; // Get App_Acronym from request body
+    //const taskData = req.body; // Assume the task data is also in the body
+    //const currentUser = req.user.username; // Assuming you have the current user available in req.user
+
+    // Call the service to insert the task with a unique Task ID and the specified values
+    const result = await tmsService.CreateTask(
+      username,
+      password,
+      application_appAcronym,
+      name_of_task,
+      description_of_task
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    // Handle errors and send appropriate response
+    if (
+      error.message.includes("mandatory fields") ||
+      error.message.includes("already exists") ||
+      error.message.includes("does not exist")
+    ) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(500).json({
+        message: "An error occurred while inserting the plan",
+        details: error.message,
+        code: 500
+      });
+    }
+  }
+};
+
+
+
+// Retrieve tasks in a particular state
+const GetTaskbyState = async (req, res) => {
+  const { state } = req.params;
+
+  try {
+    const tasks = await tmsService.getTasksByState(state);
+    if (tasks.length === 0) {
+      res.status(404).json({ message: "No tasks found in this state" });
+    } else {
+      res.status(200).json(tasks);
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+// Approve a task from “Doing to Done” state
+const PromoteTask2Done = async (req, res) => {
+  const { taskID } = req.body;
+
+  try {
+    const result = await tmsService.PromoteTask2Done(taskID);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
+
+
 module.exports = {
   getAllApplicationByUsername,
   insertApplicationController,
@@ -246,5 +324,8 @@ module.exports = {
   updateTaskStateController,
   updateTask,
   getUserPermitsController,
-  notifyUsers
+  notifyUsers,
+  CreateTask,
+  PromoteTask2Done,
+  GetTaskbyState
 };

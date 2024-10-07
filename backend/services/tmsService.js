@@ -977,6 +977,150 @@ const sendEmailToPLorPermitDone = async (App_Acronym, task_id) => {
 };
 
 
+
+
+//////////////////////////////////////// Assignment 3 /////////////////////////////////////////
+const CreateTask = async (
+  username,
+  password,
+  application_appAcronym,
+  name_of_task,
+  description_of_task
+) => {
+  const connection = await db.getConnection();
+
+  try {
+    // Start the transaction
+    await connection.beginTransaction();
+
+    // Lock the application row to prevent race conditions
+    const [app] = await connection.query(
+      "SELECT App_Rnumber, App_permit_create  FROM application WHERE App_Acronym = ? FOR UPDATE",
+      [application_appAcronym]
+    );
+
+    if (app.length === 0) {
+      throw new Error("Application not found for the given App_Acronym");
+    }
+
+    const permitCreate = app[0].App_permit_create;
+    const hasPermission = await checkGroup(username, permitCreate);
+    if (!hasPermission) {
+      throw new Error("User does not have permission to create a task.");
+    }
+
+    // Validate the task name length (1 to 255 characters)
+    const taskName = name_of_task;
+    if (taskName.length < 1 || taskName.length > 255) {
+      throw new Error("Task_name must be between 1 and 255 characters.");
+    }
+
+    // Get and increment the Rnumber
+    const currentRnumber = app[0].App_Rnumber;
+    const newRnumber = currentRnumber + 1;
+
+    // Update the App_Rnumber in the database
+    await connection.query(
+      "UPDATE application SET App_Rnumber = ? WHERE App_Acronym = ?",
+      [newRnumber, application_appAcronym]
+    );
+
+    // Generate the new Task ID (appAcronym + newRnumber)
+    const newTaskID = `${application_appAcronym}_${currentRnumber}`;
+
+    // Set defaults for required fields
+    const taskState = "open";
+    const taskCreator = "yikiat";
+    const taskOwner = "yikiat";
+    const taskCreateDate = 22006786; //convertDateToInt(taskData.taskCreateDate);
+    //taskData.notes += `\n\n {State Transit to: ${taskState} }`;
+
+    // Insert the new task with the generated Task ID and other data
+    await connection.query(
+      `INSERT INTO task (
+        Task_id, 
+        Task_name, 
+        Task_description, 
+        Task_app_Acronym, 
+        Task_state, 
+        Task_creator, 
+        Task_owner, 
+        Task_createDate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newTaskID,
+        name_of_task,
+        description_of_task || "", // Optional
+        application_appAcronym,
+        taskState,
+        taskCreator,
+        taskOwner,
+        taskCreateDate
+      ]
+    );
+
+    // Commit the transaction
+    await connection.commit();
+
+    return { Task_id: newTaskID, code:200 };
+  } catch (error) {
+    // Roll back the transaction in case of an error
+    await connection.rollback();
+    console.log(error.message);
+    throw new Error(error.message);
+  } finally {
+    // Release the connection back to the pool
+    connection.release();
+  }
+};
+
+
+
+const getTasksByState = async state => {
+  try {
+    const [tasks] = await db.query("SELECT * FROM task WHERE Task_state = ?", [
+      state
+    ]);
+    return tasks;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
+const PromoteTask2Done = async taskID => {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Fetch current state with a lock
+    const [task] = await connection.query(
+      "SELECT Task_state FROM task WHERE Task_id = ? FOR UPDATE",
+      [taskID]
+    );
+    if (task.length === 0 || task[0].Task_state !== "doing") {
+      throw new Error('Task not found or not in the "doing" state');
+    }
+
+    await connection.query("UPDATE task SET Task_state = ? WHERE Task_id = ?", [
+      "done",
+      taskID
+    ]);
+
+    await connection.commit();
+    return { message: 'Task state changed to "done"' };
+  } catch (error) {
+    await connection.rollback();
+    throw new Error(error.message);
+  } finally {
+    connection.release();
+  }
+};
+
+
+
 module.exports = {
   getAllApplicationByUsername,
   insertApplication,
@@ -989,5 +1133,8 @@ module.exports = {
   updateTaskState,
   updateTask,
   getUserPermits,
-  sendEmailToPLorPermitDone
+  sendEmailToPLorPermitDone,
+  CreateTask,
+  getTasksByState,
+  PromoteTask2Done
 };
