@@ -8,8 +8,10 @@ dotenv.config();
 
 const ERROR_CODES = {
   SUCCESS: "SUCC2001",
-  INVALID_INPUT: "ERR4001",
-  ENTRY_EXISTS: "ERR4002",
+  INVALID_URL: "ERR3001",
+  INVAILD_PARAMETER: "ERR3002",
+  INVALID_INPUT: "ERR4002",
+  INVALID_KEY: "ERR4001",
   INVALID_STATE_CHANGE: "ERR4003",
   NOT_FOUND: "ERR4004",
   INVALID_CREDENTIALS: "ERR4005",
@@ -120,17 +122,26 @@ console.log(emails);
 
 
 const CreateTask = async (req, res) => {
-  const { username, password, appAcronym, taskName, description, taskNotes } = req.body;
-  const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-  const browserType = req.headers["user-agent"];
-  const urlParams = req.query
+  const {
+    username,
+    password,
+    appAcronym,
+    taskName,
+    description,
+    taskNotes,
+    taskPlan
+
+  } = req.body;
+
+  const urlParams = req.query;
   const expectedKeys = [
     "username",
     "password",
     "appAcronym",
     "taskName",
     "description",
-    "taskNotes"
+    "taskNotes",
+    "taskPlan"
   ];
   const bodyKeys = Object.keys(req.body);
 
@@ -140,7 +151,7 @@ const CreateTask = async (req, res) => {
     if (urlParams && Object.keys(urlParams).length != 0) {
       throw {
         message: "URL Params error",
-        MsgCode: ERROR_CODES.INVALID_INPUT
+        MsgCode: ERROR_CODES.INVAILD_PARAMETER
       };
     }
 
@@ -151,7 +162,7 @@ const CreateTask = async (req, res) => {
     ) {
       throw {
         message: "Request body contains invalid or extra fields",
-        MsgCode: ERROR_CODES.INVALID_INPUT
+        MsgCode: ERROR_CODES.INVALID_KEY
       };
     }
 
@@ -172,29 +183,20 @@ const CreateTask = async (req, res) => {
     );
 
     if (user.length === 0) {
-      throw {
-        message: "Invalid credentials",
-        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
-      };
+      res.status(401).json({
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+      });
+      return;
     }
 
     const passwordMatch = await bcrypt.compare(password, user[0].password);
     if (!passwordMatch) {
-      throw {
-        message: "Invalid credentials",
-        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
-      };
+      res.status(401).json({
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+      });
+      return;
     }
 
-    const token = jwt.sign(
-      {
-        id: user[0].username,
-        ip: ipAddress,
-        browser: browserType
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
 
     await connection.beginTransaction();
     // Lock the application row to prevent race conditions
@@ -214,7 +216,7 @@ const CreateTask = async (req, res) => {
     if (!app[0].App_permit_create) {
       throw {
         message: "App_permit_create Not created",
-        MsgCode: ERROR_CODES.INVALID_STATE_CHANGE
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
       };
     }
     const permitCreate = app[0].App_permit_create;
@@ -231,6 +233,32 @@ const CreateTask = async (req, res) => {
       throw {
         message: "Task_name must be between 1 and 255 characters",
         MsgCode: ERROR_CODES.INVALID_INPUT
+      };
+    }
+
+    // // Check if taskName is unique within the application
+    // const [existingTask] = await connection.query(
+    //   "SELECT Task_name FROM task WHERE Task_name = ? AND Task_app_Acronym = ?",
+    //   [taskName, appAcronym]
+    // );
+
+    // if (existingTask.length > 0) {
+    //   throw {
+    //     message: "Task_name already exists in the specified application",
+    //     MsgCode: ERROR_CODES.ENTRY_EXISTS
+    //   };
+    // }
+
+    // Check if Task_plan exists in the application
+    const [plan] = await connection.query(
+      "SELECT Plan_MVP_name FROM plan WHERE Plan_MVP_name = ? AND Plan_app_Acronym = ?",
+      [taskPlan, appAcronym]
+    );
+
+    if (plan.length === 0) {
+      throw {
+        message: "Plan name does not exist in the specified application",
+        MsgCode: ERROR_CODES.NOT_FOUND
       };
     }
 
@@ -264,8 +292,9 @@ const CreateTask = async (req, res) => {
         Task_creator, 
         Task_owner, 
         Task_notes,
-        Task_createDate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        Task_createDate,
+        Task_plan
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newTaskID,
         taskName,
@@ -275,7 +304,8 @@ const CreateTask = async (req, res) => {
         taskCreator,
         taskOwner,
         taskNotes,
-        taskCreateDate
+        taskCreateDate,
+        taskPlan
       ]
     );
 
@@ -292,7 +322,7 @@ const CreateTask = async (req, res) => {
 
     // Return success result
     res.status(200).json({
-      result: newTask,
+      result: {Task_id: newTaskID},
       MsgCode: ERROR_CODES.SUCCESS
     });
   } catch (error) {
@@ -300,10 +330,35 @@ const CreateTask = async (req, res) => {
     await connection.rollback();
 
     // Return the error response
-    console.log(error)
-    res.status(400).json({
+    console.log(error);
+    if (
+      error.message == "User does not have permission to create a task" ||
+      error.message == "App_permit_create Not created"
+    ) {
+      res.status(403).json({
+        MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
+      });
+      return;
+    }
+    else if (
+      error.message == "URL Params error" ||
+      error.message == "Request body contains invalid or extra fields" ||
+      error.message == "Mandatory fields not filled up" ||
+      error.message == "Application not found for the given App_Acronym" ||
+      error.message == "App_permit_create Not created" ||
+      error.message == "User does not have permission to create a task" ||
+      error.message == "Task_name must be between 1 and 255 characters" ||
+      error.message == "Plan name does not exist in the specified application"
+    ) {
+      res.status(400).json({
+        MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
+      });
+      return;
+    }
+    res.status(500).json({
       MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
     });
+    return;
   } finally {
     // Release the connection back to the pool
     connection.release();
@@ -315,8 +370,6 @@ const CreateTask = async (req, res) => {
 const GetTaskbyState = async (req, res) => {
 
   const { username, password, taskState, appAcronym } = req.body;
-  const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-  const browserType = req.headers["user-agent"];
   const urlParams = req.query;
   const expectedKeys = ["username", "password", "taskState", "appAcronym"];
   const bodyKeys = Object.keys(req.body);
@@ -326,7 +379,7 @@ const GetTaskbyState = async (req, res) => {
     if (urlParams && Object.keys(urlParams).length != 0) {
       throw {
         message: "URL Params error",
-        MsgCode: ERROR_CODES.INVALID_INPUT
+        MsgCode: ERROR_CODES.INVAILD_PARAMETER
       };
     }
 
@@ -337,7 +390,7 @@ const GetTaskbyState = async (req, res) => {
     ) {
       throw {
         message: "Request body contains invalid or extra fields",
-        MsgCode: ERROR_CODES.INVALID_INPUT
+        MsgCode: ERROR_CODES.INVALID_KEY
       };
     }
 
@@ -358,30 +411,28 @@ const GetTaskbyState = async (req, res) => {
     );
 
     if (user.length === 0) {
-      throw {
-        message: "Invalid credentials",
-        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
-      };
+      res.status(401).json({
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+      }); 
+      return
     }
 
     const passwordMatch = await bcrypt.compare(password, user[0].password);
     if (!passwordMatch) {
-      throw {
-        message: "Invalid credentials",
-        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
-      };
+      res.status(401).json({
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+      });
+      return
     }
 
-    // Generate JWT Token if needed
-    const token = jwt.sign(
-      {
-        id: user[0].username,
-        ip: ipAddress,
-        browser: browserType
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+
+const stateList = ["open", "todo", "doing", "done", "closed" ]
+    if (!stateList.includes(taskState)) {
+      throw {
+        message: "Application not found for the given App_Acronym",
+        MsgCode: ERROR_CODES.INVALID_INPUT
+      };
+    }
 
     const [app] = await db.query(
       "SELECT * FROM application WHERE App_Acronym = ?",
@@ -404,12 +455,13 @@ const GetTaskbyState = async (req, res) => {
     //   throw { message: "No tasks found in this state", MsgCode: ERROR_CODES.NOT_FOUND };
     // }
 
-    return res.status(200).json({
+    res.status(200).json({
       result: tasks,
       MsgCode: ERROR_CODES.SUCCESS
     });
   } catch (error) {
       console.log(error);
+      
       res.status(400).json({
         MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
       });
@@ -420,28 +472,27 @@ const GetTaskbyState = async (req, res) => {
   
 const PromoteTask2Done = async (req, res) => {
   
-  const { username, password, taskID, appAcronym } = req.body;
+  let { username, password, taskID, appAcronym, taskNotes } = req.body;
   const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
   const browserType = req.headers["user-agent"];
   const urlParams = req.query;
-  const expectedKeys = ["username", "password", "taskID", "appAcronym"];
+  const expectedKeys = [
+    "username",
+    "password",
+    "taskID",
+    "appAcronym",
+    "taskNotes"
+  ];
   const bodyKeys = Object.keys(req.body);
 
   const connection = await db.getConnection();
-
-  if (urlParams && Object.keys(urlParams).length != 0) {
-    throw {
-      message: "URL Params error",
-      MsgCode: ERROR_CODES.INVALID_INPUT
-    };
-  }
 
   try {
     // check URL params
     if (urlParams && Object.keys(urlParams).length != 0) {
       throw {
         message: "URL Params error",
-        MsgCode: ERROR_CODES.INVALID_INPUT
+        MsgCode: ERROR_CODES.INVAILD_PARAMETER
       };
     }
 
@@ -452,7 +503,7 @@ const PromoteTask2Done = async (req, res) => {
     ) {
       throw {
         message: "Request body contains invalid or extra fields",
-        MsgCode: ERROR_CODES.INVALID_INPUT
+        MsgCode: ERROR_CODES.INVALID_KEY
       };
     }
 
@@ -473,18 +524,18 @@ const PromoteTask2Done = async (req, res) => {
     );
 
     if (user.length === 0) {
-      throw {
-        message: "Invalid credentials",
-        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
-      };
+      res.status(401).json({
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+      });
+      return;
     }
 
     const passwordMatch = await bcrypt.compare(password, user[0].password);
     if (!passwordMatch) {
-      throw {
-        message: "Invalid credentials",
-        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
-      };
+      res.status(401).json({
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+      });
+      return;
     }
 
     const token = jwt.sign(
@@ -496,6 +547,8 @@ const PromoteTask2Done = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
+
+    taskNotes += `\n\n {State Transit to:  Done}`;
 
     await connection.beginTransaction();
 
@@ -514,7 +567,7 @@ const PromoteTask2Done = async (req, res) => {
     if (!app[0].App_permit_Doing) {
       throw {
         message: "App_permit_Doing Not created",
-        MsgCode: ERROR_CODES.INVALID_STATE_CHANGE
+        MsgCode: ERROR_CODES.NOT_AUTHORIZED
       };
     }
     const permitDoing = app[0].App_permit_Doing;
@@ -543,23 +596,57 @@ const PromoteTask2Done = async (req, res) => {
       taskID
     ]);
 
+    // Update the task notes with the transition note
+    const updatedNotes = `${task[0].Task_notes || ""}${taskNotes}`;
+    await connection.query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [
+      updatedNotes,
+      taskID
+    ]);
+
     const result = await connection.query(
       "SELECT * from task WHERE Task_id = ?",
       [taskID]
     );
 
+    console.log(result[0]);
+    const results = { Task_id: taskID, Task_state: result[0][0].Task_state }
+    console.log(results);
+
     await connection.commit();
     sendEmailToPLorPermitDone(appAcronym, taskID);
     res.status(200).json({
-      result: result[0],
+      //result: result[0],
+      result: results,
       MsgCode: ERROR_CODES.SUCCESS
     });
   } catch (error) {
     await connection.rollback();
     console.log(error);
-    res.status(400).json({
-      MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
-    });
+     if (
+       error.message == "App_permit_Doing Not created" ||
+       error.message == "User does not have permission to create a task"
+     ) {
+       res.status(403).json({
+         MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
+       });
+       return;
+     } else if (
+       error.message == "URL Params error" ||
+       error.message == "Request body contains invalid or extra fields" ||
+       error.message == "Mandatory fields not filled up" ||
+       error.message == "Application not found for the given App_Acronym" ||
+       error.message == "Task not found or not in the doing state"
+     ) {
+       res.status(400).json({
+         MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
+       });
+       return;
+     }
+     res.status(500).json({
+       MsgCode: error.MsgCode || ERROR_CODES.INTERNAL_ERROR
+     });
+     return;
+
   } finally {
     connection.release();
   }
