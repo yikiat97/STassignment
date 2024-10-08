@@ -184,7 +184,7 @@ const CreateTask = async (req, res) => {
 
     if (user.length === 0) {
       res.status(401).json({
-        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
       });
       return;
     }
@@ -192,7 +192,7 @@ const CreateTask = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user[0].password);
     if (!passwordMatch) {
       res.status(401).json({
-        MsgCode: ERROR_CODES.NOT_AUTHORIZED
+        MsgCode: ERROR_CODES.INVALID_CREDENTIALS
       });
       return;
     }
@@ -276,7 +276,7 @@ const CreateTask = async (req, res) => {
     const newTaskID = `${appAcronym}_${currentRnumber}`;
 
     // Set defaults for required fields
-    const taskState = "doing";
+    const taskState = "open";
     const taskCreator = username; // Use the username from request
     const taskOwner = username; // Assume taskOwner is also the creator
     const taskCreateDate = convertDateToInt(Date.now()); // Use current timestamp
